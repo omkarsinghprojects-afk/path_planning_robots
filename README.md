@@ -11,3 +11,9 @@ session as a video or export trajectory data for analysis in Python or MATLAB.
 
 Built with FastAPI + pure JavaScript — no frontend frameworks, no ML libraries required.
 Everything runs in a single self-contained HTML file served over a lightweight Python backend.
+
+
+
+
+https://github.com/user-attachments/assets/f1b7108e-d0e0-47d8-b569-0bdf7d3eb6e2
+
