@@ -1,0 +1,2703 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AV-SIM v2 — Research Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&family=Barlow:wght@300;400&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   THEME SYSTEM
+   ============================================================ */
+:root {
+  --transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+[data-theme="dark"] {
+  --bg-void: #060a0e;
+  --bg-deep: #0b1118;
+  --bg-panel: #0f1821;
+  --bg-card: #141f2c;
+  --bg-hover: #192737;
+  --bg-input: #0d1620;
+  --border: #1b2e45;
+  --border-mid: #243d5a;
+  --amber: #f5a623;
+  --amber-dim: #7a4f0a;
+  --cyan: #00d4ff;
+  --cyan-dim: #005577;
+  --green: #39ff7a;
+  --green-dim: #0d5522;
+  --red: #ff4455;
+  --red-dim: #6b0f18;
+  --purple: #b67fff;
+  --yellow: #ffe04a;
+  --text-primary: #ddeeff;
+  --text-secondary: #6a90b0;
+  --text-dim: #2e4a65;
+  --canvas-bg: #04080d;
+  --grid-color: rgba(27,46,69,0.6);
+  --shadow: rgba(0,0,0,0.5);
+}
+[data-theme="light"] {
+  --bg-void: #eef2f7;
+  --bg-deep: #e2e9f2;
+  --bg-panel: #d8e2ee;
+  --bg-card: #cdd8e8;
+  --bg-hover: #c2d0e2;
+  --bg-input: #dae4f0;
+  --border: #b0c4d8;
+  --border-mid: #8aaac8;
+  --amber: #c07800;
+  --amber-dim: #f0c060;
+  --cyan: #006aaa;
+  --cyan-dim: #aaccee;
+  --green: #007a30;
+  --green-dim: #aaeecc;
+  --red: #cc1122;
+  --red-dim: #ffaaaa;
+  --purple: #7722cc;
+  --yellow: #886600;
+  --text-primary: #0a1a2e;
+  --text-secondary: #3a5a7a;
+  --text-dim: #7a9ab8;
+  --canvas-bg: #e8f0f8;
+  --grid-color: rgba(176,196,216,0.7);
+  --shadow: rgba(0,0,0,0.15);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: 'Barlow Condensed', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: var(--transition);
+}
+
+/* ===== HEADER ===== */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 46px;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+}
+[data-theme="dark"] header::after {
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan-dim),var(--amber-dim),transparent);
+}
+.logo { font-weight:700; font-size:20px; letter-spacing:5px; }
+.logo span { color:var(--cyan); }
+.logo em { font-style:normal; font-size:10px; color:var(--text-secondary); letter-spacing:3px; margin-left:10px; font-weight:300; }
+.header-right { display:flex; gap:18px; align-items:center; }
+.hstat { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:5px; }
+.dot { width:6px;height:6px;border-radius:50%;animation:blink 2s ease-in-out infinite; }
+.dot.green-dot { background:var(--green);box-shadow:0 0 6px var(--green); }
+.dot.amber-dot { background:var(--amber);box-shadow:0 0 6px var(--amber); }
+.dot.red-dot   { background:var(--red);box-shadow:0 0 6px var(--red); }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+#simClock { font-family:'Share Tech Mono',monospace; font-size:14px; color:var(--cyan); letter-spacing:2px; min-width:80px; }
+
+/* THEME TOGGLE */
+.theme-toggle {
+  display:flex; align-items:center; gap:8px;
+  font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--text-secondary);
+}
+.toggle-track {
+  width:36px; height:18px; border-radius:9px;
+  background:var(--bg-card); border:1px solid var(--border-mid);
+  position:relative; cursor:pointer; transition:background 0.3s;
+}
+[data-theme="dark"] .toggle-track { background:var(--cyan-dim); }
+[data-theme="light"] .toggle-track { background:var(--amber-dim); }
+.toggle-thumb {
+  position:absolute; top:2px; width:12px; height:12px;
+  border-radius:50%; background:var(--text-primary);
+  transition:left 0.2s; left:2px;
+}
+[data-theme="light"] .toggle-thumb { left:20px; }
+
+/* ===== LAYOUT ===== */
+.workspace {
+  display:grid;
+  grid-template-columns: 220px 1fr 300px;
+  flex:1; min-height:0;
+}
+
+/* ===== LEFT PANEL ===== */
+.left-panel {
+  background:var(--bg-panel);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column;
+  overflow-y:auto; overflow-x:hidden;
+}
+.left-panel::-webkit-scrollbar { width:3px; }
+.left-panel::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+/* ===== CANVAS ===== */
+.canvas-wrap {
+  position:relative;
+  background:var(--canvas-bg);
+  overflow:hidden;
+}
+#simCanvas { display:block; width:100%; height:100%; cursor:crosshair; }
+.canvas-hud {
+  position:absolute; top:10px; left:10px;
+  display:flex; flex-direction:column; gap:5px;
+  pointer-events:none;
+}
+.hud-tag {
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  padding:3px 8px;
+  background:rgba(0,212,255,0.07); border:1px solid rgba(0,212,255,0.2);
+  color:var(--cyan); letter-spacing:1px;
+}
+[data-theme="light"] .hud-tag { background:rgba(0,106,170,0.08); border-color:rgba(0,106,170,0.25); }
+.canvas-coords {
+  position:absolute; bottom:10px; right:10px;
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  color:var(--text-dim); pointer-events:none;
+}
+.canvas-legend {
+  position:absolute; bottom:10px; left:10px;
+  display:flex; gap:14px; pointer-events:none; flex-wrap:wrap;
+}
+.leg-item { display:flex; align-items:center; gap:5px; font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--text-secondary); }
+.leg-dot { width:10px; height:10px; border-radius:2px; }
+
+/* ===== RIGHT PANEL ===== */
+.right-panel {
+  background:var(--bg-panel);
+  border-left:1px solid var(--border);
+  display:flex; flex-direction:column;
+  overflow-y:auto; overflow-x:hidden;
+}
+.right-panel::-webkit-scrollbar { width:3px; }
+.right-panel::-webkit-scrollbar-thumb { background:var(--border); }
+
+/* ===== SHARED PANEL STYLES ===== */
+.panel-section { border-bottom:1px solid var(--border); padding:11px 13px; }
+.section-title {
+  font-size:10px; font-weight:600; letter-spacing:3px;
+  color:var(--text-secondary); margin-bottom:9px; text-transform:uppercase;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.section-title .accent { color:var(--amber); }
+.section-title .collapse-btn {
+  cursor:pointer; color:var(--text-dim); font-size:12px;
+  background:none; border:none; color:var(--text-secondary);
+  font-family:'Share Tech Mono',monospace;
+}
+.collapsible { overflow:hidden; transition:max-height 0.25s ease; }
+.collapsible.collapsed { max-height:0!important; }
+
+/* ===== FORM ELEMENTS ===== */
+.ctrl-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; gap:6px; }
+.ctrl-label { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--text-secondary); white-space:nowrap; min-width:75px; }
+.ctrl-value { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--cyan); min-width:36px; text-align:right; }
+input[type=range] {
+  flex:1; -webkit-appearance:none; height:3px;
+  background:var(--border); border-radius:2px; outline:none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:11px; height:11px; border-radius:50%;
+  background:var(--cyan); cursor:pointer; box-shadow:0 0 5px var(--cyan);
+}
+[data-theme="light"] input[type=range]::-webkit-slider-thumb { box-shadow:none; }
+
+select, input[type=text], input[type=number], textarea {
+  width:100%; padding:5px 8px;
+  background:var(--bg-input); border:1px solid var(--border);
+  color:var(--text-primary); font-family:'Share Tech Mono',monospace;
+  font-size:11px; outline:none; border-radius:0;
+  transition:border-color 0.15s;
+}
+select:focus, input:focus, textarea:focus { border-color:var(--cyan); }
+textarea { resize:vertical; min-height:80px; line-height:1.5; }
+
+/* ===== BUTTONS ===== */
+.btn-row { display:flex; gap:5px; margin-bottom:7px; }
+.btn {
+  flex:1; font-family:'Barlow Condensed',sans-serif; font-weight:600;
+  font-size:11px; letter-spacing:1.5px; padding:7px 5px;
+  border:1px solid var(--border); background:var(--bg-card);
+  color:var(--text-secondary); cursor:pointer; transition:all 0.15s;
+  text-transform:uppercase;
+}
+.btn:hover { border-color:var(--border-mid); color:var(--text-primary); }
+.btn.active { border-color:var(--green); color:var(--green); background:rgba(57,255,122,0.06); }
+[data-theme="light"] .btn.active { background:rgba(0,122,48,0.08); }
+.btn.danger { border-color:var(--red-dim); color:var(--red); }
+.btn.danger:hover { background:rgba(255,68,85,0.07); border-color:var(--red); }
+.btn.amber-btn { border-color:var(--amber-dim); color:var(--amber); }
+.btn.amber-btn:hover { background:rgba(245,166,35,0.07); }
+.btn.cyan-btn { border-color:var(--cyan-dim); color:var(--cyan); }
+.btn.cyan-btn:hover { background:rgba(0,212,255,0.06); }
+.btn.full { flex:none; width:100%; }
+
+/* ALGO GRID */
+.algo-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-bottom:7px; }
+.algo-btn {
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  padding:6px 4px; border:1px solid var(--border); background:var(--bg-card);
+  color:var(--text-secondary); cursor:pointer; transition:all 0.15s; text-align:center;
+}
+.algo-btn.selected { border-color:var(--amber); color:var(--amber); background:rgba(245,166,35,0.06); }
+.algo-btn:hover:not(.selected) { color:var(--text-primary); border-color:var(--border-mid); }
+
+/* ROBOT ITEMS */
+.robot-item {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 8px; margin-bottom:4px;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-left:3px solid transparent; cursor:pointer; transition:all 0.15s;
+}
+.robot-item:hover { background:var(--bg-hover); }
+.robot-item.active-robot { border-left-color:var(--cyan); }
+.robot-name { font-family:'Share Tech Mono',monospace; font-size:11px; }
+.robot-state { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-secondary); margin-top:1px; }
+.robot-actions { display:flex; gap:3px; }
+.robot-mini-btn {
+  font-family:'Share Tech Mono',monospace; font-size:9px; padding:2px 5px;
+  border:1px solid var(--border); background:transparent; cursor:pointer;
+  color:var(--text-secondary); transition:all 0.12s;
+}
+.robot-mini-btn:hover { color:var(--red); border-color:var(--red); }
+.robot-badge {
+  font-family:'Share Tech Mono',monospace; font-size:9px;
+  padding:2px 5px; border-radius:2px;
+}
+.badge-active { background:rgba(57,255,122,0.1); color:var(--green); border:1px solid rgba(57,255,122,0.25); }
+[data-theme="light"] .badge-active { background:rgba(0,122,48,0.1); }
+.badge-stopped { background:rgba(255,68,85,0.1); color:var(--red); border:1px solid rgba(255,68,85,0.25); }
+.badge-idle { background:rgba(245,166,35,0.1); color:var(--amber); border:1px solid rgba(245,166,35,0.25); }
+
+/* TELEMETRY */
+.telem-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-bottom:7px; }
+.telem-card { background:var(--bg-card); border:1px solid var(--border); padding:7px; }
+.telem-label { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-dim); letter-spacing:1px; margin-bottom:2px; text-transform:uppercase; }
+.telem-val { font-family:'Share Tech Mono',monospace; font-size:15px; line-height:1; }
+.telem-unit { font-size:9px; color:var(--text-dim); margin-left:2px; }
+.t-cyan { color:var(--cyan); }
+.t-amber { color:var(--amber); }
+.t-green { color:var(--green); }
+.t-red { color:var(--red); }
+.t-purple { color:var(--purple); }
+
+/* MINI CHARTS */
+.chart-wrap { background:var(--bg-card); border:1px solid var(--border); padding:7px; margin-bottom:6px; }
+.chart-title { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-dim); letter-spacing:1px; margin-bottom:5px; text-transform:uppercase; }
+canvas.mini-chart { width:100%; height:50px; display:block; }
+
+/* SENSOR BARS */
+.sensor-row { margin-bottom:5px; }
+.sensor-label-row { display:flex; justify-content:space-between; margin-bottom:2px; }
+.sensor-label { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-secondary); }
+.sensor-val { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--cyan); }
+.sensor-bar-bg { height:3px; background:var(--border); border-radius:2px; overflow:hidden; }
+.sensor-fill { height:100%; border-radius:2px; transition:width 0.1s; }
+.fill-ok { background:linear-gradient(90deg,var(--cyan-dim),var(--cyan)); }
+.fill-warn { background:linear-gradient(90deg,var(--amber-dim),var(--amber)); }
+.fill-crit { background:linear-gradient(90deg,var(--red-dim),var(--red)); }
+
+/* LOG */
+.log-box {
+  background:var(--bg-card); border:1px solid var(--border);
+  height:85px; overflow-y:auto; padding:5px 7px;
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+}
+.log-box::-webkit-scrollbar { width:3px; }
+.log-box::-webkit-scrollbar-thumb { background:var(--border); }
+.log-line { color:var(--text-secondary); margin-bottom:2px; line-height:1.4; }
+.log-ts { color:var(--text-dim); margin-right:5px; }
+.log-info { color:var(--cyan); }
+.log-warn { color:var(--amber); }
+.log-crit { color:var(--red); }
+.log-good { color:var(--green); }
+
+/* TABS */
+.tab-bar { display:flex; border-bottom:1px solid var(--border); }
+.tab {
+  flex:1; padding:8px 4px; text-align:center;
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  color:var(--text-secondary); cursor:pointer; border-bottom:2px solid transparent;
+  transition:all 0.15s; letter-spacing:1px;
+  background:none; border-top:none; border-left:none; border-right:none;
+}
+.tab.active { color:var(--cyan); border-bottom-color:var(--cyan); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* COLOR PICKER ROW */
+.color-row { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:7px; }
+.color-swatch {
+  width:22px; height:22px; border-radius:3px; cursor:pointer;
+  border:2px solid transparent; transition:all 0.12s;
+}
+.color-swatch.selected { border-color:white; transform:scale(1.15); }
+[data-theme="light"] .color-swatch.selected { border-color:#0a1a2e; }
+
+/* OBSTACLE EDITOR */
+.obs-item {
+  display:flex; align-items:center; gap:4px;
+  padding:5px 7px; margin-bottom:4px;
+  background:var(--bg-card); border:1px solid var(--border);
+  font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--text-secondary);
+}
+.obs-item span { flex:1; }
+.obs-mini-btn {
+  padding:2px 6px; border:1px solid var(--border); background:none;
+  color:var(--text-secondary); cursor:pointer; font-family:'Share Tech Mono',monospace;
+  font-size:9px; transition:all 0.12s;
+}
+.obs-mini-btn:hover { color:var(--red); border-color:var(--red); }
+
+/* BOTTOM BAR */
+.bottom-bar {
+  height:40px; background:var(--bg-deep); border-top:1px solid var(--border);
+  display:flex; align-items:center; padding:0 12px; gap:6px; flex-shrink:0;
+  grid-column:1/-1;
+}
+.toolbar-btn {
+  font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:11px;
+  letter-spacing:1.5px; padding:5px 12px; border:1px solid var(--border);
+  background:transparent; color:var(--text-secondary); cursor:pointer;
+  transition:all 0.15s; text-transform:uppercase; white-space:nowrap;
+}
+.toolbar-btn:hover { color:var(--text-primary); border-color:var(--border-mid); }
+.toolbar-btn.go { border-color:rgba(57,255,122,0.4); color:var(--green); }
+.toolbar-btn.go:hover { background:rgba(57,255,122,0.06); box-shadow:0 0 10px rgba(57,255,122,0.1); }
+.toolbar-btn.stop-btn { border-color:var(--red-dim); color:var(--red); }
+.toolbar-btn.stop-btn:hover { background:rgba(255,68,85,0.06); }
+.toolbar-sep { width:1px; height:20px; background:var(--border); margin:0 2px; }
+.toolbar-info { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--text-dim); margin-left:auto; }
+.toolbar-info span { color:var(--text-secondary); }
+
+/* NUMBER INPUT SMALL */
+.num-input-row { display:flex; gap:5px; margin-bottom:6px; align-items:center; }
+.num-input-row label { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--text-secondary); flex:1; }
+.num-input-row input { width:60px; flex:none; }
+
+/* CUSTOM CODE EDITOR */
+.code-editor {
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  background:var(--bg-input); border:1px solid var(--border);
+  color:var(--green); padding:8px; width:100%;
+  line-height:1.6; min-height:140px; resize:vertical;
+}
+.code-editor:focus { border-color:var(--cyan); outline:none; }
+
+/* MODAL */
+.modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.7); z-index:999;
+  align-items:center; justify-content:center;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:var(--bg-panel); border:1px solid var(--border-mid);
+  padding:20px; width:480px; max-height:80vh; overflow-y:auto;
+  box-shadow:0 20px 60px var(--shadow);
+}
+.modal h3 { font-size:14px; letter-spacing:3px; color:var(--cyan); margin-bottom:14px; }
+.modal-close {
+  float:right; background:none; border:none; color:var(--text-secondary);
+  cursor:pointer; font-size:16px; margin-top:-4px;
+}
+.modal-close:hover { color:var(--red); }
+
+/* TOOLTIP */
+[data-tip] { position:relative; }
+[data-tip]:hover::after {
+  content:attr(data-tip);
+  position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
+  background:var(--bg-card); border:1px solid var(--border-mid);
+  color:var(--text-primary); font-family:'Share Tech Mono',monospace;
+  font-size:10px; padding:4px 8px; white-space:nowrap; z-index:200;
+  pointer-events:none;
+}
+
+/* MINI RADAR */
+#radarCanvas { display:block; width:100%; height:120px; }
+
+/* SPARKLINE INLINE */
+.inline-spark { display:flex; align-items:center; gap:5px; }
+.spark-canvas { flex:1; height:20px; }
+
+/* NOTIFICATION TOAST */
+.toast {
+  position:fixed; bottom:55px; left:50%; transform:translateX(-50%);
+  background:var(--bg-card); border:1px solid var(--border-mid);
+  color:var(--text-primary); font-family:'Share Tech Mono',monospace;
+  font-size:11px; padding:8px 18px; z-index:500;
+  opacity:0; transition:opacity 0.2s; pointer-events:none;
+}
+.toast.show { opacity:1; }
+
+/* RECORDING INDICATOR */
+.rec-dot {
+  width:8px; height:8px; border-radius:50%; background:var(--red);
+  box-shadow:0 0 8px var(--red); display:none;
+  animation:blink 0.8s ease-in-out infinite;
+}
+.rec-dot.active { display:inline-block; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">AV<span>-</span>SIM <em>RESEARCH SIMULATOR v2.1</em></div>
+  <div class="header-right">
+    <div class="hstat"><div class="dot green-dot" id="simStatusDot"></div><span id="simStatusText">RUNNING</span></div>
+    <div class="hstat"><div class="dot amber-dot"></div><span id="agentCountLabel">3 AGENTS</span></div>
+    <div class="hstat"><div class="rec-dot" id="recDot"></div></div>
+    <div id="simClock">T+00:00.0</div>
+    <div class="theme-toggle" data-tip="Toggle light/dark theme">
+      <span>☀</span>
+      <div class="toggle-track" onclick="toggleTheme()">
+        <div class="toggle-thumb" id="themeThumb"></div>
+      </div>
+      <span>☾</span>
+    </div>
+  </div>
+</header>
+
+<div class="workspace">
+
+<!-- ============================================================
+     LEFT PANEL — ENVIRONMENT & OBSTACLES
+     ============================================================ -->
+<div class="left-panel">
+
+  <!-- SIM CONTROL -->
+  <div class="panel-section">
+    <div class="section-title"><span class="accent">//</span> SIMULATION
+      <button class="collapse-btn" onclick="toggleSection(this)">▾</button>
+    </div>
+    <div class="collapsible">
+      <div class="btn-row">
+        <button class="btn active" id="btnPlay" onclick="togglePlay()">⏸ PAUSE</button>
+        <button class="btn danger" onclick="resetSim()">↺ RESET</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="stepOnce()" data-tip="Advance 1 frame">⏭ STEP</button>
+        <button class="btn cyan-btn" onclick="openModal('exportModal')">⬇ EXPORT</button>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">SIM SPEED</span>
+        <input type="range" min="1" max="15" value="5" oninput="simSpeed=+this.value;document.getElementById('speedVal').textContent=this.value+'x'">
+        <span class="ctrl-value" id="speedVal">5x</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">ZOOM</span>
+        <input type="range" min="5" max="30" value="10" oninput="zoom=+this.value/10;document.getElementById('zoomVal').textContent=(zoom).toFixed(1)+'x';document.getElementById('zoomTag').textContent='ZOOM: '+(zoom).toFixed(1)+'x'">
+        <span class="ctrl-value" id="zoomVal">1.0x</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENVIRONMENT -->
+  <div class="panel-section">
+    <div class="section-title"><span class="accent">//</span> ENVIRONMENT
+      <button class="collapse-btn" onclick="toggleSection(this)">▾</button>
+    </div>
+    <div class="collapsible">
+      <div class="ctrl-row">
+        <span class="ctrl-label">MAP SIZE</span>
+        <select onchange="setMapSize(this.value)" style="flex:1;margin-left:6px">
+          <option value="small">SMALL 800×500</option>
+          <option value="medium" selected>MEDIUM 1200×700</option>
+          <option value="large">LARGE 1600×1000</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="toggleGrid()">⊞ GRID</button>
+        <button class="btn" onclick="toggleTrails()">∿ TRAILS</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="toggleLidar()">◉ LIDAR</button>
+        <button class="btn" onclick="toggleObstacles()">⬛ OBSTACLES</button>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">GRAVITY</span>
+        <input type="range" min="0" max="20" value="0" oninput="gravity=+this.value/100;document.getElementById('gravVal').textContent=this.value">
+        <span class="ctrl-value" id="gravVal">0</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">FRICTION</span>
+        <input type="range" min="0" max="100" value="5" oninput="friction=+this.value/100;document.getElementById('fricVal').textContent=(friction).toFixed(2)">
+        <span class="ctrl-value" id="fricVal">0.05</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">WIND X</span>
+        <input type="range" min="-50" max="50" value="0" oninput="windX=+this.value/100;document.getElementById('windXVal').textContent=this.value">
+        <span class="ctrl-value" id="windXVal">0</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">WIND Y</span>
+        <input type="range" min="-50" max="50" value="0" oninput="windY=+this.value/100;document.getElementById('windYVal').textContent=this.value">
+        <span class="ctrl-value" id="windYVal">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PATH DESIGN -->
+  <div class="panel-section">
+    <div class="section-title"><span class="accent">//</span> PATH DESIGN
+      <button class="collapse-btn" onclick="toggleSection(this)">▾</button>
+    </div>
+    <div class="collapsible">
+      <div class="algo-grid">
+        <div class="algo-btn selected" onclick="setPath('loop',this)">↻ LOOP</div>
+        <div class="algo-btn" onclick="setPath('figure8',this)">∞ FIG-8</div>
+        <div class="algo-btn" onclick="setPath('slalom',this)">〜 SLALOM</div>
+        <div class="algo-btn" onclick="setPath('zigzag',this)">⚡ ZIGZAG</div>
+        <div class="algo-btn" onclick="setPath('spiral',this)">🌀 SPIRAL</div>
+        <div class="algo-btn" onclick="setPath('racetrack',this)">🏁 TRACK</div>
+        <div class="algo-btn" onclick="setPath('lemniscate',this)">∞ LEMNISC</div>
+        <div class="algo-btn" onclick="setPath('custom',this)">✎ CUSTOM</div>
+      </div>
+      <div id="customPathHint" style="display:none;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--amber);margin-bottom:6px">
+        ← Click canvas to add waypoints. Right-click to finish.
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">PATH SCALE</span>
+        <input type="range" min="30" max="200" value="100" oninput="pathScale=+this.value/100;document.getElementById('scaleVal').textContent=this.value+'%';regeneratePath()">
+        <span class="ctrl-value" id="scaleVal">100%</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">SMOOTHING</span>
+        <input type="range" min="0" max="10" value="0" oninput="pathSmoothing=+this.value;document.getElementById('smoothVal').textContent=this.value;regeneratePath()">
+        <span class="ctrl-value" id="smoothVal">0</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn danger" onclick="clearPath()">✕ CLEAR PATH</button>
+        <button class="btn amber-btn" onclick="reversePath()">⇄ REVERSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OBSTACLE EDITOR -->
+  <div class="panel-section">
+    <div class="section-title"><span class="accent">//</span> OBSTACLES
+      <button class="collapse-btn" onclick="toggleSection(this)">▾</button>
+    </div>
+    <div class="collapsible">
+      <div class="ctrl-row">
+        <span class="ctrl-label">SHAPE</span>
+        <select id="obsShape" style="flex:1;margin-left:6px">
+          <option value="rect">RECTANGLE</option>
+          <option value="circle">CIRCLE</option>
+          <option value="triangle">TRIANGLE</option>
+          <option value="lshape">L-SHAPE</option>
+        </select>
+      </div>
+      <div class="num-input-row">
+        <label>WIDTH</label>
+        <input type="number" id="obsW" value="40" min="10" max="200">
+      </div>
+      <div class="num-input-row">
+        <label>HEIGHT</label>
+        <input type="number" id="obsH" value="40" min="10" max="200">
+      </div>
+      <div class="num-input-row">
+        <label>ROTATION°</label>
+        <input type="number" id="obsRot" value="0" min="0" max="360">
+      </div>
+      <div class="ctrl-row" style="margin-bottom:6px">
+        <span class="ctrl-label">COLOR</span>
+        <input type="color" id="obsColor" value="#ff4455" style="width:50px;height:24px;border:1px solid var(--border);background:var(--bg-input);cursor:pointer;padding:0">
+      </div>
+      <div class="btn-row">
+        <button class="btn amber-btn" onclick="startPlaceObstacle()">+ PLACE ON CANVAS</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn danger" onclick="clearObstacles()">✕ CLEAR ALL</button>
+        <button class="btn" onclick="addRandomObstacles()">⚄ RANDOM</button>
+      </div>
+      <div id="obsList" style="max-height:100px;overflow-y:auto"></div>
+    </div>
+  </div>
+
+</div><!-- end left panel -->
+
+<!-- ============================================================
+     CANVAS
+     ============================================================ -->
+<div class="canvas-wrap">
+  <canvas id="simCanvas"></canvas>
+  <div class="canvas-hud">
+    <div class="hud-tag">2D TOP-DOWN VIEW</div>
+    <div class="hud-tag" id="modeTag">ALGO: PURE PURSUIT</div>
+    <div class="hud-tag" id="zoomTag">ZOOM: 1.0x</div>
+    <div class="hud-tag" id="interactTag" style="display:none;color:var(--amber);border-color:var(--amber)">CLICK TO PLACE</div>
+  </div>
+  <div class="canvas-coords" id="coordsDisplay">X:0 Y:0</div>
+  <div class="canvas-legend">
+    <div class="leg-item"><div class="leg-dot" style="background:#00d4ff"></div>EGO</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#f5a623"></div>AGENT</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#39ff7a"></div>PATH</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#ff4455"></div>OBSTACLE</div>
+    <div class="leg-item"><div class="leg-dot" style="background:rgba(0,212,255,0.4)"></div>LIDAR</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     RIGHT PANEL — AGENTS, TELEMETRY, ALGORITHM
+     ============================================================ -->
+<div class="right-panel">
+
+  <!-- ALGORITHM -->
+  <div class="panel-section">
+    <div class="section-title"><span class="accent">//</span> ALGORITHM
+      <button class="collapse-btn" onclick="toggleSection(this)">▾</button>
+    </div>
+    <div class="collapsible">
+      <div class="algo-grid">
+        <div class="algo-btn selected" onclick="setAlgo('PURE_PURSUIT',this)">PURE PURSUIT</div>
+        <div class="algo-btn" onclick="setAlgo('STANLEY',this)">STANLEY</div>
+        <div class="algo-btn" onclick="setAlgo('LQR',this)">LQR</div>
+        <div class="algo-btn" onclick="setAlgo('MPC',this)">MPC</div>
+        <div class="algo-btn" onclick="setAlgo('PID',this)">PID</div>
+        <div class="algo-btn" onclick="setAlgo('DWA',this)">DWA</div>
+        <div class="algo-btn" onclick="setAlgo('POTENTIAL',this)">POTENTIAL</div>
+        <div class="algo-btn" onclick="setAlgo('CUSTOM',this)">CUSTOM ✎</div>
+      </div>
+      <div id="customAlgoPanel" style="display:none">
+        <div class="chart-title" style="margin-bottom:4px">CUSTOM CONTROLLER (JS)</div>
+        <textarea class="code-editor" id="customAlgoCode">// robot: { x, y, heading, speed, cte }
+// path: array of {x, y} waypoints
+// robot.pathIdx: current waypoint index
+// Modify robot.heading to steer.
+// Set robot.cte for cross-track error.
+
+function customControl(robot) {
+  if (path.length < 2) return;
+  // Simple proportional lookahead
+  const ld = 60;
+  let target = path[robot.pathIdx];
+  for (let i = 0; i < path.length; i++) {
+    const idx = (robot.pathIdx + i) % path.length;
+    if (dist(robot, path[idx]) >= ld) {
+      target = path[idx]; break;
+    }
+  }
+  const dx = target.x - robot.x;
+  const dy = target.y - robot.y;
+  const ta = Math.atan2(dy, dx);
+  let da = ta - robot.heading;
+  da = Math.atan2(Math.sin(da), Math.cos(da));
+  robot.heading += da * 0.10;
+  robot.cte = Math.abs(da) * 10;
+}</textarea>
+        <div class="btn-row" style="margin-top:5px">
+          <button class="btn cyan-btn" onclick="compileCustomAlgo()">▶ COMPILE & APPLY</button>
+        </div>
+        <div id="algoError" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--red);margin-top:3px;display:none"></div>
+      </div>
+      <div class="ctrl-row" style="margin-top:4px">
+        <span class="ctrl-label">LOOKAHEAD</span>
+        <input type="range" min="15" max="150" value="50" oninput="lookaheadDist=+this.value;document.getElementById('ldVal').textContent=this.value">
+        <span class="ctrl-value" id="ldVal">50</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">MAX SPEED</span>
+        <input type="range" min="1" max="12" value="4" oninput="maxSpeed=+this.value;document.getElementById('msVal').textContent=this.value">
+        <span class="ctrl-value" id="msVal">4</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">STEER GAIN</span>
+        <input type="range" min="1" max="30" value="12" oninput="steerGain=+this.value/100;document.getElementById('sgVal').textContent=(+this.value/100).toFixed(2)">
+        <span class="ctrl-value" id="sgVal">0.12</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">NOISE σ</span>
+        <input type="range" min="0" max="50" value="0" oninput="sensorNoise=+this.value/1000;document.getElementById('noiseVal').textContent=this.value">
+        <span class="ctrl-value" id="noiseVal">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- AGENTS -->
+  <div class="panel-section">
+    <div class="section-title"><span class="accent">//</span> AGENTS
+      <button class="collapse-btn" onclick="toggleSection(this)">▾</button>
+    </div>
+    <div class="collapsible">
+      <div class="btn-row">
+        <button class="btn amber-btn" onclick="addRobot()">＋ ADD AGENT</button>
+        <button class="btn danger" onclick="removeSelectedRobot()">✕ REMOVE SEL.</button>
+      </div>
+      <div id="robotList"></div>
+      <!-- Spawn config -->
+      <div style="margin-top:6px">
+        <div class="ctrl-row">
+          <span class="ctrl-label">ROBOT TYPE</span>
+          <select id="robotTypeSelect" style="flex:1;margin-left:6px">
+            <option value="car">CAR</option>
+            <option value="truck">TRUCK</option>
+            <option value="drone">DRONE</option>
+            <option value="bike">BIKE</option>
+            <option value="dot">POINT</option>
+          </select>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-label">COLOR</span>
+        </div>
+        <div class="color-row" id="robotColorPicker">
+          <div class="color-swatch selected" style="background:#00d4ff" onclick="selectRobotColor('#00d4ff',this)"></div>
+          <div class="color-swatch" style="background:#f5a623" onclick="selectRobotColor('#f5a623',this)"></div>
+          <div class="color-swatch" style="background:#39ff7a" onclick="selectRobotColor('#39ff7a',this)"></div>
+          <div class="color-swatch" style="background:#ff4455" onclick="selectRobotColor('#ff4455',this)"></div>
+          <div class="color-swatch" style="background:#b67fff" onclick="selectRobotColor('#b67fff',this)"></div>
+          <div class="color-swatch" style="background:#ffe04a" onclick="selectRobotColor('#ffe04a',this)"></div>
+          <div class="color-swatch" style="background:#ff9955" onclick="selectRobotColor('#ff9955',this)"></div>
+          <div class="color-swatch" style="background:#ff55cc" onclick="selectRobotColor('#ff55cc',this)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELEMETRY TABS -->
+  <div class="panel-section">
+    <div class="section-title"><span class="accent">//</span> TELEMETRY</div>
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchTab('telem','tab-telem',this)">DATA</button>
+      <button class="tab" onclick="switchTab('telem','tab-charts',this)">CHARTS</button>
+      <button class="tab" onclick="switchTab('telem','tab-radar',this)">RADAR</button>
+      <button class="tab" onclick="switchTab('telem','tab-lidar',this)">LIDAR</button>
+    </div>
+    <div id="tab-telem" class="tab-content active" style="padding-top:8px">
+      <div class="telem-grid">
+        <div class="telem-card"><div class="telem-label">SPEED</div><div class="telem-val t-cyan" id="tSpeed">0.0<span class="telem-unit">m/s</span></div></div>
+        <div class="telem-card"><div class="telem-label">HEADING</div><div class="telem-val t-amber" id="tHeading">0<span class="telem-unit">°</span></div></div>
+        <div class="telem-card"><div class="telem-label">CROSS ERR</div><div class="telem-val t-green" id="tCTE">0.0<span class="telem-unit">m</span></div></div>
+        <div class="telem-card"><div class="telem-label">COLLISIONS</div><div class="telem-val t-red" id="tCollisions">0</div></div>
+        <div class="telem-card"><div class="telem-label">POSITION X</div><div class="telem-val t-purple" id="tPosX">0<span class="telem-unit">px</span></div></div>
+        <div class="telem-card"><div class="telem-label">POSITION Y</div><div class="telem-val t-purple" id="tPosY">0<span class="telem-unit">px</span></div></div>
+        <div class="telem-card"><div class="telem-label">DIST TRAV.</div><div class="telem-val t-cyan" id="tDist">0<span class="telem-unit">m</span></div></div>
+        <div class="telem-card"><div class="telem-label">WPT IDX</div><div class="telem-val" id="tWpt">0</div></div>
+      </div>
+    </div>
+    <div id="tab-charts" class="tab-content" style="padding-top:8px">
+      <div class="chart-wrap"><div class="chart-title">SPEED (m/s)</div><canvas class="mini-chart" id="speedChart"></canvas></div>
+      <div class="chart-wrap"><div class="chart-title">CROSS-TRACK ERROR (m)</div><canvas class="mini-chart" id="cteChart"></canvas></div>
+      <div class="chart-wrap"><div class="chart-title">HEADING (rad)</div><canvas class="mini-chart" id="headChart"></canvas></div>
+      <div class="chart-wrap"><div class="chart-title">ALL AGENTS SPEED</div><canvas class="mini-chart" id="allSpeedChart"></canvas></div>
+    </div>
+    <div id="tab-radar" class="tab-content" style="padding-top:8px">
+      <div class="chart-wrap">
+        <div class="chart-title">360° PROXIMITY RADAR</div>
+        <canvas id="radarCanvas"></canvas>
+      </div>
+      <div class="chart-wrap" style="margin-top:4px">
+        <div class="chart-title">STEER ANGLE HISTORY</div>
+        <canvas class="mini-chart" id="steerChart"></canvas>
+      </div>
+    </div>
+    <div id="tab-lidar" class="tab-content" style="padding-top:8px">
+      <div id="lidarBars"></div>
+    </div>
+  </div>
+
+  <!-- EVENT LOG -->
+  <div class="panel-section">
+    <div class="section-title"><span class="accent">//</span> EVENT LOG
+      <button class="collapse-btn" onclick="toggleSection(this)">▾</button>
+    </div>
+    <div class="collapsible">
+      <div class="log-box" id="logBox"></div>
+      <div class="btn-row" style="margin-top:5px">
+        <button class="btn danger" onclick="document.getElementById('logBox').innerHTML=''">✕ CLEAR LOG</button>
+        <button class="btn" onclick="toggleRecording()" id="recBtn">⏺ RECORD</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end right panel -->
+
+</div><!-- end workspace -->
+
+<!-- BOTTOM BAR -->
+<div class="bottom-bar">
+  <button class="toolbar-btn stop-btn" onclick="togglePlay()" id="playToolbarBtn">▶ RUN</button>
+  <div class="toolbar-sep"></div>
+  <button class="toolbar-btn" onclick="resetSim()">↺ RESET</button>
+  <button class="toolbar-btn" onclick="stepOnce()">⏭ STEP×1</button>
+  <div class="toolbar-sep"></div>
+  <button class="toolbar-btn" onclick="openModal('exportModal')">⬇ EXPORT JSON</button>
+  <button class="toolbar-btn" onclick="openModal('compareModal')">📊 COMPARE</button>
+  <button class="toolbar-btn" onclick="toggleGrid()">⊞ GRID</button>
+  <button class="toolbar-btn" onclick="toggleTrails()">∿ TRAILS</button>
+  <div class="toolbar-sep"></div>
+  <button class="toolbar-btn" id="videoRecBtn" onclick="toggleVideoRecording()" style="border-color:rgba(255,68,85,0.4);color:var(--red)">🎥 RECORD MP4</button>
+  <div class="toolbar-sep"></div>
+  <button class="toolbar-btn" style="font-size:10px" onclick="openModal('helpModal')">? HELP</button>
+  <div class="toolbar-info">CANVAS: CLICK=WAYPOINT | SCROLL=ZOOM | DRAG=PAN | <span id="fps">60</span> FPS</div>
+</div>
+
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('exportModal')">✕</button>
+    <h3>// EXPORT DATA</h3>
+    <div class="btn-row"><button class="btn cyan-btn full" onclick="exportJSON()">⬇ EXPORT JSON</button></div>
+    <div class="btn-row"><button class="btn amber-btn full" onclick="exportCSV()">⬇ EXPORT CSV</button></div>
+    <div class="btn-row"><button class="btn full" onclick="exportPath()">⬇ EXPORT PATH WAYPOINTS</button></div>
+    <div class="btn-row"><button class="btn full" onclick="importPathFromJSON()">⬆ IMPORT PATH JSON</button></div>
+    <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="handleImport(event)">
+    <div style="margin-top:10px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-secondary)">
+      Exported JSON includes trajectory, speed/CTE histories, algorithm config, obstacle layout.
+    </div>
+  </div>
+</div>
+
+<!-- COMPARE MODAL -->
+<div class="modal-overlay" id="compareModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('compareModal')">✕</button>
+    <h3>// ALGORITHM COMPARISON</h3>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-secondary);margin-bottom:12px">
+      Run each algorithm for 10 seconds and compare mean CTE and collisions.
+    </div>
+    <div class="btn-row">
+      <button class="btn cyan-btn full" onclick="runBenchmark()">▶ RUN BENCHMARK</button>
+    </div>
+    <div id="benchResults" style="margin-top:10px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text-primary)"></div>
+  </div>
+</div>
+
+<!-- HELP MODAL -->
+<div class="modal-overlay" id="helpModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('helpModal')">✕</button>
+    <h3>// KEYBOARD & MOUSE</h3>
+    <table style="font-family:'Share Tech Mono',monospace;font-size:10px;border-collapse:collapse;width:100%">
+      <tr><td style="padding:5px 8px;color:var(--cyan);border-bottom:1px solid var(--border)">SPACE</td><td style="padding:5px;border-bottom:1px solid var(--border);color:var(--text-secondary)">Play / Pause</td></tr>
+      <tr><td style="padding:5px 8px;color:var(--cyan);border-bottom:1px solid var(--border)">R</td><td style="padding:5px;border-bottom:1px solid var(--border);color:var(--text-secondary)">Reset simulation</td></tr>
+      <tr><td style="padding:5px 8px;color:var(--cyan);border-bottom:1px solid var(--border)">→ / .</td><td style="padding:5px;border-bottom:1px solid var(--border);color:var(--text-secondary)">Step one frame</td></tr>
+      <tr><td style="padding:5px 8px;color:var(--cyan);border-bottom:1px solid var(--border)">G</td><td style="padding:5px;border-bottom:1px solid var(--border);color:var(--text-secondary)">Toggle grid</td></tr>
+      <tr><td style="padding:5px 8px;color:var(--cyan);border-bottom:1px solid var(--border)">T</td><td style="padding:5px;border-bottom:1px solid var(--border);color:var(--text-secondary)">Toggle trails</td></tr>
+      <tr><td style="padding:5px 8px;color:var(--cyan);border-bottom:1px solid var(--border)">L</td><td style="padding:5px;border-bottom:1px solid var(--border);color:var(--text-secondary)">Toggle LIDAR</td></tr>
+      <tr><td style="padding:5px 8px;color:var(--cyan);border-bottom:1px solid var(--border)">+  /  -</td><td style="padding:5px;border-bottom:1px solid var(--border);color:var(--text-secondary)">Zoom in / out</td></tr>
+      <tr><td style="padding:5px 8px;color:var(--cyan);border-bottom:1px solid var(--border)">SCROLL</td><td style="padding:5px;border-bottom:1px solid var(--border);color:var(--text-secondary)">Zoom canvas</td></tr>
+      <tr><td style="padding:5px 8px;color:var(--cyan);border-bottom:1px solid var(--border)">LEFT CLICK</td><td style="padding:5px;border-bottom:1px solid var(--border);color:var(--text-secondary)">Add waypoint / place obstacle</td></tr>
+      <tr><td style="padding:5px 8px;color:var(--cyan);border-bottom:1px solid var(--border)">RIGHT CLICK</td><td style="padding:5px;border-bottom:1px solid var(--border);color:var(--text-secondary)">Finish custom path</td></tr>
+      <tr><td style="padding:5px 8px;color:var(--cyan)">DRAG (mid btn)</td><td style="padding:5px;color:var(--text-secondary)">Pan view</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ================================================================
+// AV-SIM v2 — FULL ENGINE
+// ================================================================
+
+const canvas = document.getElementById('simCanvas');
+const ctx    = canvas.getContext('2d');
+
+// --- State ---
+let running        = true;
+let simTime        = 0;
+let simSpeed       = 5;
+let zoom           = 1.0;
+let panX           = 0, panY = 0;
+let showGrid       = true;
+let showTrails     = true;
+let showLidar      = true;
+let showObstacles  = true;
+let currentAlgo    = 'PURE_PURSUIT';
+let lookaheadDist  = 50;
+let maxSpeed       = 4;
+let steerGain      = 0.12;
+let sensorNoise    = 0;
+let gravity        = 0;
+let friction       = 0.05;
+let windX          = 0, windY = 0;
+let pathScale      = 1.0;
+let pathSmoothing  = 0;
+let selectedRobotIdx = 0;
+let collisionCount = 0;
+let frameCount     = 0;
+let lastFpsTime    = performance.now();
+let customPathMode = false;
+let placingObstacle = false;
+let recording      = false;
+let recordedData   = [];
+let currentPathType = 'loop';
+let newRobotColor  = '#00d4ff';
+let isDragging     = false, dragStartX = 0, dragStartY = 0;
+let customAlgoFn   = null;
+let pathScale_base = 1.0;
+
+// ---- LIDAR CONFIG ----
+const LIDAR_ANGLES = [-90,-75,-60,-45,-30,-15,0,15,30,45,60,75,90];
+const LIDAR_MAX    = 140;
+const LIDAR_DIRS   = ['L90','L75','L60','L45','L30','L15','FWD','R15','R30','R45','R60','R75','R90'];
+
+// ---- ROBOT TYPES ----
+const ROBOT_SHAPES = {
+  car:     { w:24, h:12, label:'CAR' },
+  truck:   { w:34, h:14, label:'TRUCK' },
+  drone:   { w:16, h:16, label:'DRONE' },
+  bike:    { w:20, h:7,  label:'BIKE' },
+  dot:     { w:10, h:10, label:'PT' },
+};
+
+const ROBOT_NAMES  = ['EGO-01','AGT-02','AGT-03','AGT-04','AGT-05','AGT-06','AGT-07','AGT-08'];
+
+// ---- PATH ----
+let path = [];
+let rawPath = [];
+
+// ---- OBSTACLES ----
+let obstacles = [];
+
+// ================================================================
+// PATH GENERATION
+// ================================================================
+// All path generators use world coords centered at (0,0).
+// All paths are CLOSED LOOPS so robots follow them indefinitely.
+function makeLoopPath(n=60) {
+  const rx=230*pathScale, ry=140*pathScale, pts=[];
+  for(let i=0;i<n;i++){
+    const a=(i/n)*Math.PI*2;
+    pts.push({x:Math.cos(a)*rx, y:Math.sin(a)*ry});
+  }
+  return pts;
+}
+
+// True figure-8 / lemniscate of Bernoulli — both loops fully traversed
+function makeFigure8(a=160,n=120) {
+  const pts=[];
+  for(let i=0;i<n;i++){
+    const t=(i/n)*Math.PI*2;
+    // Lissajous: x=sin(t), y=sin(2t)/2  → symmetric figure-8
+    pts.push({
+      x:  a * pathScale * Math.sin(t),
+      y:  a * pathScale * 0.5 * Math.sin(2*t),
+    });
+  }
+  return pts;
+}
+
+// Slalom — closed loop: go right along sine wave, return straight on top
+function makeSlalom(n=48) {
+  const pts=[];
+  const W=320*pathScale, amp=100*pathScale;
+  const half=n/2;
+  // Forward: sine wave
+  for(let i=0;i<half;i++){
+    const t=i/(half-1);
+    pts.push({x: -W/2 + t*W, y: Math.sin(t*Math.PI*4)*amp});
+  }
+  // Return: straight line back (top)
+  for(let i=0;i<half;i++){
+    const t=i/(half-1);
+    pts.push({x: W/2 - t*W, y: -amp*1.4});
+  }
+  return pts;
+}
+
+// Zigzag — closed loop: sharp zigzag forward, smooth return
+function makeZigzag(n=48) {
+  const pts=[];
+  const W=320*pathScale, amp=100*pathScale;
+  const half=n/2;
+  // Forward: sharp zigzag
+  for(let i=0;i<half;i++){
+    const t=i/(half-1);
+    const sign=(Math.floor(i/(half/6))%2===0)?1:-1;
+    pts.push({x: -W/2 + t*W, y: sign*amp});
+  }
+  // Return: arc back
+  for(let i=0;i<half;i++){
+    const t=i/(half-1);
+    pts.push({x: W/2 - t*W, y: -amp*1.5 + Math.sin(t*Math.PI)*amp*0.5});
+  }
+  return pts;
+}
+
+// Spiral — goes out then back in (closed)
+function makeSpiral(turns=2.5, n=100) {
+  const pts=[];
+  // Outward
+  for(let i=0;i<n/2;i++){
+    const frac=i/(n/2);
+    const t=frac*Math.PI*2*turns;
+    const r=frac*170*pathScale;
+    pts.push({x:Math.cos(t)*r, y:Math.sin(t)*r});
+  }
+  // Inward (reverse spiral, offset angle)
+  for(let i=0;i<n/2;i++){
+    const frac=1-i/(n/2);
+    const t=frac*Math.PI*2*turns+Math.PI;
+    const r=frac*170*pathScale;
+    pts.push({x:Math.cos(t)*r, y:Math.sin(t)*r});
+  }
+  return pts;
+}
+
+// Racetrack — proper stadium shape with rounded ends
+function makeRacetrack(n=80) {
+  const W=240*pathScale, H=110*pathScale, R=H/2;
+  const pts=[];
+  const straight=Math.floor(n*0.3), curve=Math.floor(n*0.2);
+  // Bottom straight (left→right)
+  for(let i=0;i<straight;i++) pts.push({x:-W/2+R+(i/(straight-1))*W, y: H/2});
+  // Right curve (bottom→top)
+  for(let i=0;i<=curve;i++){const a=-Math.PI/2+(i/curve)*Math.PI; pts.push({x:W/2+Math.cos(a)*R, y:Math.sin(a)*R});}
+  // Top straight (right→left)
+  for(let i=0;i<straight;i++) pts.push({x:W/2-R-(i/(straight-1))*W, y:-H/2});
+  // Left curve (top→bottom)
+  for(let i=0;i<=curve;i++){const a=Math.PI/2+(i/curve)*Math.PI; pts.push({x:-W/2+Math.cos(a)*R, y:Math.sin(a)*R});}
+  return pts;
+}
+
+// Lemniscate of Bernoulli — true infinity symbol, fully symmetric
+function makeLemniscate(a=180, n=120) {
+  const pts=[];
+  for(let i=0;i<n;i++){
+    const t=(i/n)*Math.PI*2;
+    const scale=a*pathScale;
+    // Parametric: x=a·cos(t)/(1+sin²(t)),  y=a·sin(t)cos(t)/(1+sin²(t))
+    const denom=1+Math.sin(t)*Math.sin(t);
+    pts.push({
+      x: scale*Math.cos(t)/denom,
+      y: scale*Math.sin(t)*Math.cos(t)/denom,
+    });
+  }
+  return pts;
+}
+
+function smoothPath(pts,iterations=1) {
+  if(iterations===0||pts.length<3) return pts;
+  let p=[...pts];
+  for(let iter=0;iter<iterations;iter++){
+    const s=[];
+    for(let i=0;i<p.length;i++){
+      const prev=p[(i-1+p.length)%p.length];
+      const next=p[(i+1)%p.length];
+      s.push({x:(prev.x+p[i].x*2+next.x)/4,y:(prev.y+p[i].y*2+next.y)/4});
+    }
+    p=s;
+  }
+  return p;
+}
+
+function regeneratePath() {
+  if(currentPathType==='custom') return;
+  const pathFns={
+    loop:       ()=>makeLoopPath(),
+    figure8:    ()=>makeFigure8(),
+    slalom:     ()=>makeSlalom(),
+    zigzag:     ()=>makeZigzag(),
+    spiral:     ()=>makeSpiral(),
+    racetrack:  ()=>makeRacetrack(),
+    lemniscate: ()=>makeLemniscate(),
+  };
+  rawPath=(pathFns[currentPathType]||pathFns.loop)();
+  path=smoothPath([...rawPath],pathSmoothing);
+  resetRobotPositions();
+}
+
+function initObstacles() {
+  obstacles=[
+    {x: -120, y: -80,  w:35, h:35, shape:'rect',    rot:0,   color:'#ff4455'},
+    {x:  160, y:  60,  w:28, h:55, shape:'rect',    rot:0,   color:'#ff4455'},
+    {x:   30, y: -130, w:45, h:22, shape:'rect',    rot:15,  color:'#ff4455'},
+    {x: -200, y:  90,  w:22, h:38, shape:'circle',  rot:0,   color:'#ff8844'},
+    {x:  190, y: -70,  w:38, h:25, shape:'rect',    rot:-20, color:'#ff4455'},
+  ];
+  updateObsList();
+}
+
+// ================================================================
+// ROBOT
+// ================================================================
+function createRobot(x,y,color,name,pathOffset,type='car') {
+  return {
+    x,y,heading:0,speed:0,color,name,type,
+    pathIdx:pathOffset%Math.max(path.length,1),
+    trail:[],cte:0,steer:0,distTraveled:0,
+    speedHistory:[],cteHistory:[],headHistory:[],steerHistory:[],
+    collided:false,active:true,prevX:x,prevY:y,
+    // Per-robot features
+    algo: 'GLOBAL',          // 'GLOBAL' = use global selector, else own algo key
+    customAlgoFn: null,      // compiled custom fn for this robot
+    startPt: null,           // {x,y} world coords
+    endPt:   null,           // {x,y} world coords
+    localPath: null,         // A*-computed path (overrides global path when set)
+    reachedEnd: false,
+  };
+}
+
+let robots=[];
+function resetRobotPositions() {
+  robots.forEach((r,i)=>{
+    const pt=path[i*10%Math.max(path.length,1)]||{x:0,y:0};
+    r.x=pt.x; r.y=pt.y; r.heading=0; r.speed=0;
+    r.trail=[]; r.speedHistory=[]; r.cteHistory=[]; r.headHistory=[]; r.steerHistory=[];
+    r.collided=false; r.distTraveled=0; r._pidState=null;
+  });
+  simTime=0; collisionCount=0;
+}
+
+function initRobots() {
+  robots=[];
+  const offsets=[0,10,20];
+  const types=['car','truck','drone'];
+  for(let i=0;i<3;i++){
+    const pt=path[offsets[i]%Math.max(path.length,1)]||{x:0,y:0};
+    robots.push(createRobot(pt.x,pt.y,['#00d4ff','#f5a623','#39ff7a'][i],ROBOT_NAMES[i],offsets[i],types[i]));
+  }
+  selectedRobotIdx=0;
+  updateRobotList();
+}
+
+// ================================================================
+// ALGORITHMS
+// ================================================================
+// ----------------------------------------------------------------
+// SHARED OBSTACLE AVOIDANCE LAYER
+// Applied on top of every path-following algorithm.
+// Uses forward LIDAR beams to compute a repulsion steering offset.
+// ----------------------------------------------------------------
+function obstacleSteeringCorrection(robot) {
+  if(!showObstacles || obstacles.length === 0) return 0;
+
+  const DETECT_RANGE = 90;   // how far ahead to look
+  const BEAMS = [             // [angle_deg, weight] — forward-focused
+    [-60, 0.5], [-40, 0.8], [-20, 1.2], [-10, 1.5],
+    [0,   1.0],
+    [ 10, 1.5], [ 20, 1.2], [ 40, 0.8], [ 60, 0.5],
+  ];
+
+  let leftRepulsion  = 0;  // pressure from obstacles on the left  → steer right
+  let rightRepulsion = 0;  // pressure from obstacles on the right → steer left
+
+  for(const [deg, weight] of BEAMS) {
+    const angle = robot.heading + deg * Math.PI / 180;
+    // Cast a ray
+    let hitDist = DETECT_RANGE;
+    for(let r = 8; r < DETECT_RANGE; r += 4) {
+      const px = robot.x + Math.cos(angle) * r;
+      const py = robot.y + Math.sin(angle) * r;
+      let hit = false;
+      for(const obs of obstacles) if(obsContains(obs, px, py)) { hit = true; hitDist = r; break; }
+      if(hit) break;
+    }
+
+    if(hitDist < DETECT_RANGE) {
+      // Stronger repulsion the closer the obstacle
+      const strength = weight * Math.pow((DETECT_RANGE - hitDist) / DETECT_RANGE, 2) * 2.5;
+      if(deg <= 0) rightRepulsion += strength;  // obstacle on left → push right
+      else         leftRepulsion  += strength;  // obstacle on right → push left
+    }
+  }
+
+  // Net correction: positive = steer right, negative = steer left
+  const correction = (rightRepulsion - leftRepulsion) * 0.055;
+  return Math.max(-0.35, Math.min(0.35, correction));
+}
+
+// ----------------------------------------------------------------
+// PATH-FOLLOWING ALGORITHMS
+// Each computes path-tracking steering, then obstacle correction
+// is blended in. Obstacle correction dominates when close.
+// ----------------------------------------------------------------
+function purePursuit(robot, P) {
+  P=P||path; if(P.length<2) return;
+  const ld=lookaheadDist+noise()*sensorNoise*20;
+  let minD=Infinity;
+  for(let i=0;i<P.length;i++){const d=dist2(robot,P[i]);if(d<minD){minD=d;robot.pathIdx=i;}}
+  let target=P[robot.pathIdx];
+  for(let i=0;i<P.length;i++){const idx=(robot.pathIdx+i)%P.length;if(dist2(robot,P[idx])>=ld){target=P[idx];break;}}
+  const da=angleDiff(Math.atan2(target.y-robot.y,target.x-robot.x),robot.heading);
+  const obs=obstacleSteeringCorrection(robot);
+  const blend=Math.min(Math.abs(obs)/0.35,1.0);
+  robot.heading+=(da*steerGain)*(1-blend*0.85)+obs;
+  robot.steer=da; robot.cte=Math.abs(da)*10;
+}
+
+function stanley(robot, P) {
+  P=P||path; if(P.length<2) return;
+  let minD=Infinity,ci=0;
+  for(let i=0;i<P.length;i++){const d=dist2(robot,P[i]);if(d<minD){minD=d;ci=i;}}
+  const nx=P[(ci+1)%P.length];
+  const pa=Math.atan2(nx.y-P[ci].y,nx.x-P[ci].x);
+  const he=angleDiff(pa,robot.heading);
+  const cta=Math.atan2(0.6*minD,robot.speed+0.5);
+  const pathSteer=he+cta*0.3;
+  const obs=obstacleSteeringCorrection(robot);
+  robot.heading+=pathSteer*0.1+obs;
+  robot.steer=pathSteer; robot.cte=minD*0.5;
+}
+
+function lqr(robot, P) {
+  P=P||path; if(P.length<2) return;
+  let minD=Infinity,ci=0;
+  for(let i=0;i<P.length;i++){const d=dist2(robot,P[i]);if(d<minD){minD=d;ci=i;}}
+  const nx=P[(ci+1)%P.length];
+  const he=angleDiff(Math.atan2(nx.y-P[ci].y,nx.x-P[ci].x),robot.heading);
+  const pathSteer=Math.max(-0.12,Math.min(0.12,0.4*minD*0.04+0.8*he));
+  const obs=obstacleSteeringCorrection(robot);
+  robot.heading+=pathSteer+obs;
+  robot.steer=pathSteer; robot.cte=minD*0.4;
+}
+
+function mpc(robot, P) {
+  P=P||path; if(P.length<2) return;
+  const H=8; let bestS=0,bestCost=Infinity;
+  for(let s=-8;s<=8;s++){
+    const st=s*0.025; let cost=0,tx=robot.x,ty=robot.y,th=robot.heading+st,collided=false;
+    for(let h=0;h<H;h++){
+      tx+=Math.cos(th)*robot.speed; ty+=Math.sin(th)*robot.speed;
+      let mD=Infinity; for(const p of P) mD=Math.min(mD,Math.hypot(tx-p.x,ty-p.y)); cost+=mD;
+      for(const obs of obstacles){
+        const od=Math.hypot(tx-obs.x,ty-obs.y),safeR=Math.max(obs.w,obs.h)*0.7+30;
+        if(od<safeR){cost+=(safeR-od)*20; if(obsContains(obs,tx,ty)){collided=true;cost+=9999;}}
+      }
+    }
+    if(!collided&&cost<bestCost){bestCost=cost;bestS=st;}
+  }
+  robot.heading+=bestS; robot.steer=bestS; robot.cte=bestCost/H*0.05;
+}
+
+function pid(robot, P) {
+  P=P||path; if(P.length<2) return;
+  if(!robot._pidState) robot._pidState={prev:0,integral:0};
+  let minD=Infinity,ci=0;
+  for(let i=0;i<P.length;i++){const d=dist2(robot,P[i]);if(d<minD){minD=d;ci=i;}}
+  const nx=P[(ci+1)%P.length];
+  const error=angleDiff(Math.atan2(nx.y-P[ci].y,nx.x-P[ci].x),robot.heading);
+  robot._pidState.integral=Math.max(-2,Math.min(2,robot._pidState.integral+error*0.016));
+  const deriv=(error-robot._pidState.prev)/0.016; robot._pidState.prev=error;
+  const pathSteer=Math.max(-0.15,Math.min(0.15,0.35*error+0.01*robot._pidState.integral+0.08*deriv));
+  const obs=obstacleSteeringCorrection(robot);
+  robot.heading+=pathSteer+obs; robot.steer=pathSteer; robot.cte=minD*0.45;
+}
+
+function dwa(robot, P) {
+  P=P||path; if(P.length<2) return;
+  let minD=Infinity,ci=0;
+  for(let i=0;i<P.length;i++){const d=dist2(robot,P[i]);if(d<minD){minD=d;ci=i;}}
+  const goal=P[(ci+3)%P.length];
+  const goalAngle=Math.atan2(goal.y-robot.y,goal.x-robot.x);
+  let bestV=robot.speed,bestW=0,bestScore=-Infinity;
+  for(let v=Math.max(0.5,robot.speed-0.6);v<=Math.min(maxSpeed,robot.speed+0.6);v+=0.2){
+    for(let w=-0.25;w<=0.25;w+=0.04){
+      const nh=robot.heading+w; let safe=true,obsCost=0,tx=robot.x,ty=robot.y;
+      for(let h=0;h<6;h++){
+        tx+=Math.cos(nh)*v; ty+=Math.sin(nh)*v;
+        for(const obs of obstacles){
+          if(obsContains(obs,tx,ty)){safe=false;break;}
+          const od=Math.hypot(tx-obs.x,ty-obs.y),sr=Math.max(obs.w,obs.h)*0.7+25;
+          if(od<sr) obsCost+=(sr-od)*0.5;
+        }
+        if(!safe) break;
+      }
+      if(!safe) continue;
+      const score=v*0.8-Math.abs(angleDiff(goalAngle,nh))*2.5-obsCost*0.2;
+      if(score>bestScore){bestScore=score;bestV=v;bestW=w;}
+    }
+  }
+  robot.heading+=bestW; robot.steer=bestW; robot.cte=minD*0.4;
+}
+
+function potentialField(robot, P) {
+  P=P||path; if(P.length<2) return;
+  let minD=Infinity,ci=0;
+  for(let i=0;i<P.length;i++){const d=dist2(robot,P[i]);if(d<minD){minD=d;ci=i;}}
+  const goal=P[(ci+5)%P.length];
+  let fx=goal.x-robot.x,fy=goal.y-robot.y;
+  const fn=Math.hypot(fx,fy)||1; fx/=fn; fy/=fn;
+  const REP_RADIUS=130,REP_GAIN=800;
+  for(const obs of obstacles){
+    const dx=robot.x-obs.x,dy=robot.y-obs.y,d=Math.hypot(dx,dy);
+    const effD=Math.max(1,d-Math.max(obs.w,obs.h)*0.5);
+    if(effD<REP_RADIUS){const rep=REP_GAIN/(effD*effD);fx+=rep*(dx/d);fy+=rep*(dy/d);}
+  }
+  const da=angleDiff(Math.atan2(fy,fx),robot.heading);
+  robot.heading+=Math.max(-0.3,Math.min(0.3,da*steerGain*2));
+  robot.steer=da; robot.cte=minD*0.35;
+}
+
+const algoFns={
+  PURE_PURSUIT: purePursuit,
+  STANLEY:      stanley,
+  LQR:          lqr,
+  MPC:          mpc,
+  PID:          pid,
+  DWA:          dwa,
+  POTENTIAL:    potentialField,
+  CUSTOM: (robot,P)=>{
+    const fn=robot.customAlgoFn||customAlgoFn;
+    if(fn){try{fn(robot,P||path);}catch(e){}} else purePursuit(robot,P);
+  },
+};
+
+// Custom per-robot algo registry (user-defined names)
+const customAlgoRegistry = {}; // name -> compiled fn
+
+// ================================================================
+// A* PATHFINDING  (world coords, grid resolution 20px)
+// ================================================================
+const ASTAR_CELL = 22;
+
+function astar(startW, endW) {
+  // Convert world→grid
+  const OX=800, OY=600, W=Math.ceil(OX*2/ASTAR_CELL), H=Math.ceil(OY*2/ASTAR_CELL);
+  function wg(wx,wy){ return {gx:Math.round((wx+OX)/ASTAR_CELL), gy:Math.round((wy+OY)/ASTAR_CELL)}; }
+  function gw(gx,gy){ return {x:gx*ASTAR_CELL-OX, y:gy*ASTAR_CELL-OY}; }
+  function key(gx,gy){ return gx*1000+gy; }
+
+  // Build obstacle grid
+  const blocked = new Set();
+  for(const obs of obstacles){
+    const margin=Math.max(obs.w,obs.h)*0.6+ASTAR_CELL;
+    for(let wx=obs.x-margin;wx<=obs.x+margin;wx+=ASTAR_CELL*0.5){
+      for(let wy=obs.y-margin;wy<=obs.y+margin;wy+=ASTAR_CELL*0.5){
+        if(obsContains(obs,wx,wy)){
+          const {gx,gy}=wg(wx,wy);
+          for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++) blocked.add(key(gx+dx,gy+dy));
+        }
+      }
+    }
+  }
+
+  const sg=wg(startW.x,startW.y), eg=wg(endW.x,endW.y);
+  const open=new Map(), closed=new Set();
+  const gScore=new Map(), fScore=new Map(), parent=new Map();
+  const h=(gx,gy)=>Math.hypot(gx-eg.gx,gy-eg.gy);
+  const sk=key(sg.gx,sg.gy);
+  gScore.set(sk,0); fScore.set(sk,h(sg.gx,sg.gy)); open.set(sk,sg);
+
+  let iterations=0;
+  while(open.size>0&&iterations++<4000){
+    // Pick lowest f
+    let bestK=null,bestF=Infinity;
+    for(const [k,n] of open){ const f=fScore.get(k)||Infinity; if(f<bestF){bestF=f;bestK=k;} }
+    const curr=open.get(bestK);
+    if(curr.gx===eg.gx&&curr.gy===eg.gy){
+      // Reconstruct path
+      const pts=[gw(eg.gx,eg.gy)]; let ck=bestK;
+      while(parent.has(ck)){ck=parent.get(ck);const n=open.get(ck)||{gx:Math.floor(ck/1000),gy:ck%1000};pts.unshift(gw(Math.floor(ck/1000),ck%1000));}
+      // Smooth by removing collinear points
+      const smooth=[pts[0]];
+      for(let i=1;i<pts.length-1;i++){
+        const prev=smooth[smooth.length-1],next=pts[i+1];
+        const cross=Math.abs((pts[i].x-prev.x)*(next.y-prev.y)-(pts[i].y-prev.y)*(next.x-prev.x));
+        if(cross>ASTAR_CELL*ASTAR_CELL*0.3) smooth.push(pts[i]);
+      }
+      smooth.push(pts[pts.length-1]);
+      return smooth;
+    }
+    open.delete(bestK); closed.add(bestK);
+    const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+    for(const [dx,dy] of dirs){
+      const nx=curr.gx+dx,ny=curr.gy+dy,nk=key(nx,ny);
+      if(closed.has(nk)||blocked.has(nk)) continue;
+      const ng=(gScore.get(bestK)||0)+Math.hypot(dx,dy);
+      if(ng<(gScore.get(nk)||Infinity)){
+        parent.set(nk,bestK); gScore.set(nk,ng); fScore.set(nk,ng+h(nx,ny));
+        open.set(nk,{gx:nx,gy:ny});
+      }
+    }
+  }
+  // Fallback: straight line
+  return [startW, endW];
+}
+
+// ================================================================
+// START / END POINT SYSTEM
+// ================================================================
+let setStartEndMode = null; // null | {robotIdx, mode:'start'|'end'}
+
+function setRobotStartEnd(robotIdx, mode) {
+  setStartEndMode = {robotIdx, mode};
+  document.getElementById('interactTag').style.display='block';
+  document.getElementById('interactTag').textContent = `CLICK TO SET ${mode.toUpperCase()} POINT FOR ${robots[robotIdx].name}`;
+  canvas.style.cursor='crosshair';
+  toast(`Click canvas to set ${mode} point for ${robots[robotIdx].name}`);
+}
+
+function placeStartEnd(wx, wy) {
+  if(!setStartEndMode) return false;
+  const {robotIdx, mode} = setStartEndMode;
+  const robot = robots[robotIdx];
+  if(mode==='start'){
+    robot.startPt = {x:wx, y:wy};
+    robot.x = wx; robot.y = wy;
+    robot.reachedEnd = false;
+    logMsg(`${robot.name} start set @ (${wx.toFixed(0)},${wy.toFixed(0)})`,'info');
+  } else {
+    robot.endPt = {x:wx, y:wy};
+    logMsg(`${robot.name} end set @ (${wx.toFixed(0)},${wy.toFixed(0)})`,'info');
+  }
+  // If both set, compute A* path
+  if(robot.startPt && robot.endPt){
+    robot.localPath = astar(robot.startPt, robot.endPt);
+    robot.pathIdx = 0; robot.reachedEnd = false;
+    logMsg(`${robot.name} A* path computed: ${robot.localPath.length} waypoints`,'good');
+  }
+  setStartEndMode = null;
+  document.getElementById('interactTag').style.display='none';
+  canvas.style.cursor='crosshair';
+  return true;
+}
+
+function clearRobotPath(robotIdx){
+  const r=robots[robotIdx];
+  r.startPt=null; r.endPt=null; r.localPath=null; r.reachedEnd=false;
+  logMsg(`${r.name} path cleared — using global path`,'info');
+}
+
+// Draw start/end markers and A* path
+function drawStartEndMarkers(){
+  for(const robot of robots){
+    if(robot.startPt){
+      const s=w2s(robot.startPt.x,robot.startPt.y);
+      ctx.beginPath(); ctx.arc(s.x,s.y,8*zoom,0,Math.PI*2);
+      ctx.strokeStyle=robot.color; ctx.lineWidth=2; ctx.stroke();
+      ctx.fillStyle=hexToRgba(robot.color,0.2); ctx.fill();
+      ctx.fillStyle=robot.color; ctx.font=`bold ${9*zoom}px 'Share Tech Mono',monospace`;
+      ctx.fillText('S',s.x-3*zoom,s.y+4*zoom);
+    }
+    if(robot.endPt){
+      const s=w2s(robot.endPt.x,robot.endPt.y);
+      ctx.beginPath();
+      ctx.moveTo(s.x,s.y-9*zoom); ctx.lineTo(s.x+8*zoom,s.y+5*zoom); ctx.lineTo(s.x-8*zoom,s.y+5*zoom);
+      ctx.closePath();
+      ctx.strokeStyle=robot.color; ctx.lineWidth=2; ctx.stroke();
+      ctx.fillStyle=hexToRgba(robot.color,0.25); ctx.fill();
+      ctx.fillStyle=robot.color; ctx.font=`bold ${9*zoom}px 'Share Tech Mono',monospace`;
+      ctx.fillText('E',s.x-3*zoom,s.y+4*zoom);
+    }
+    // Draw A* computed path for this robot
+    if(robot.localPath && robot.localPath.length>1){
+      ctx.beginPath();
+      ctx.setLineDash([4,4]);
+      ctx.strokeStyle=hexToRgba(robot.color,0.5);
+      ctx.lineWidth=1.5*zoom;
+      const p0=w2s(robot.localPath[0].x,robot.localPath[0].y);
+      ctx.moveTo(p0.x,p0.y);
+      for(const p of robot.localPath){ const s=w2s(p.x,p.y); ctx.lineTo(s.x,s.y); }
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+}
+
+// ================================================================
+// MP4 / WEBM SCREEN RECORDING  (MediaRecorder API)
+// ================================================================
+let mediaRecorder = null;
+let videoChunks   = [];
+let videoRecording = false;
+
+async function toggleVideoRecording(){
+  const btn = document.getElementById('videoRecBtn');
+  if(videoRecording){
+    // Stop
+    mediaRecorder.stop();
+    videoRecording = false;
+    btn.textContent = '🎥 RECORD MP4';
+    btn.classList.remove('danger');
+    logMsg('Video recording stopped — saving...','info');
+  } else {
+    // Start — capture the whole page
+    try{
+      let stream;
+      // Try to capture just the canvas for cleaner output
+      if(canvas.captureStream){
+        // Composite: canvas + overlay panels via display capture
+        stream = canvas.captureStream(30);
+      } else {
+        toast('captureStream not supported in this browser');
+        return;
+      }
+
+      // If display capture is available, use it for full GUI
+      if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia){
+        try{
+          stream = await navigator.mediaDevices.getDisplayMedia({
+            video:{frameRate:30, displaySurface:'browser'},
+            audio:false
+          });
+        } catch(e){
+          // User denied or not available — fall back to canvas only
+          stream = canvas.captureStream(30);
+          logMsg('Full-screen capture denied — recording canvas only','warn');
+        }
+      }
+
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : MediaRecorder.isTypeSupported('video/webm')
+        ? 'video/webm'
+        : 'video/mp4';
+
+      videoChunks = [];
+      mediaRecorder = new MediaRecorder(stream, {mimeType, videoBitsPerSecond:4000000});
+      mediaRecorder.ondataavailable = e=>{ if(e.data.size>0) videoChunks.push(e.data); };
+      mediaRecorder.onstop = ()=>{
+        const blob = new Blob(videoChunks, {type: mimeType});
+        const ext  = mimeType.includes('mp4') ? 'mp4' : 'webm';
+        const url  = URL.createObjectURL(blob);
+        dlBlobUrl(url, `av-sim-recording-${Date.now()}.${ext}`);
+        stream.getTracks().forEach(t=>t.stop());
+        document.getElementById('recDot').classList.remove('active');
+        logMsg(`Video saved as .${ext} (${(blob.size/1024/1024).toFixed(1)} MB)`,'good');
+        videoChunks=[];
+      };
+      mediaRecorder.start(100); // collect every 100ms
+      videoRecording = true;
+      btn.textContent = '⏹ STOP VIDEO';
+      btn.classList.add('danger');
+      document.getElementById('recDot').classList.add('active');
+      logMsg('🎥 Video recording started','good');
+      toast('Recording GUI — click ⏹ STOP VIDEO to save');
+    } catch(e){
+      logMsg('Video recording error: '+e.message,'crit');
+      toast('Recording failed: '+e.message);
+    }
+  }
+}
+
+// Override dlBlob for video (pass URL directly)
+function dlBlobUrl(url, filename){
+  const a=document.createElement('a');
+  a.href=url; a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+}
+
+// ================================================================
+// LIDAR
+// ================================================================
+function castLidar(robot) {
+  const readings=[];
+  for(const deg of LIDAR_ANGLES){
+    const angle=robot.heading+deg*Math.PI/180;
+    let hit=LIDAR_MAX;
+    outer:for(let r=5;r<LIDAR_MAX;r+=3){
+      const px=robot.x+Math.cos(angle)*r,py=robot.y+Math.sin(angle)*r;
+      for(const obs of obstacles){
+        if(obsContains(obs,px,py)){hit=r;break outer;}
+      }
+      if(px<0||px>canvas.width||py<0||py>canvas.height){hit=r;break;}
+    }
+    readings.push(hit+noise()*sensorNoise*5);
+  }
+  return readings;
+}
+
+function obsContains(obs,px,py){
+  const dx=px-obs.x,dy=py-obs.y;
+  const cos=Math.cos(-obs.rot*Math.PI/180),sin=Math.sin(-obs.rot*Math.PI/180);
+  const lx=dx*cos-dy*sin,ly=dx*sin+dy*cos;
+  if(obs.shape==='circle') return Math.hypot(dx,dy)<obs.w/2;
+  return Math.abs(lx)<obs.w/2&&Math.abs(ly)<obs.h/2;
+}
+
+// ================================================================
+// COLLISION
+// ================================================================
+function checkCollision(robot){
+  const shape=ROBOT_SHAPES[robot.type||'car'];
+  for(const obs of obstacles){
+    if(obsContains(obs,robot.x,robot.y)) return true;
+    const corners=[
+      {x:robot.x+shape.w/2,y:robot.y},
+      {x:robot.x-shape.w/2,y:robot.y},
+      {x:robot.x,y:robot.y+shape.h/2},
+    ];
+    for(const c of corners) if(obsContains(obs,c.x,c.y)) return true;
+  }
+  for(const other of robots){
+    if(other===robot||!other.active) continue;
+    if(Math.hypot(robot.x-other.x,robot.y-other.y)<18) return true;
+  }
+  return false;
+}
+
+// ================================================================
+// STEP
+// ================================================================
+function stepRobots(){
+  for(let i=0;i<robots.length;i++){
+    const robot=robots[i];
+    if(!robot.active) continue;
+
+    // Determine which path this robot follows
+    const activePath = robot.localPath || path;
+    if(activePath.length < 2) continue;
+
+    robot.prevX=robot.x; robot.prevY=robot.y;
+
+    // Check if reached end point
+    if(robot.endPt && robot.localPath){
+      const dEnd=Math.hypot(robot.x-robot.endPt.x, robot.y-robot.endPt.y);
+      if(dEnd < 20 && !robot.reachedEnd){
+        robot.reachedEnd=true;
+        robot.speed=0;
+        logMsg(`${robot.name} reached destination!`,'good');
+        continue;
+      }
+      if(robot.reachedEnd) continue;
+    }
+
+    // Per-robot algo or global
+    const algoKey = robot.algo === 'GLOBAL' ? currentAlgo : robot.algo;
+    if(algoKey === 'CUSTOM'){
+      const fn = robot.customAlgoFn || customAlgoFn;
+      if(fn){ try{ fn(robot, activePath); }catch(e){} }
+      else { purePursuitWith(robot, activePath); }
+    } else {
+      const fn = algoFns[algoKey] || algoFns['PURE_PURSUIT'];
+      fn(robot, activePath);
+    }
+
+    // Speed
+    const targetSpeed=maxSpeed*(1-Math.min(robot.cte/30,0.5));
+    robot.speed+=(targetSpeed-robot.speed)*0.15;
+    robot.speed=Math.max(0.4,Math.min(maxSpeed,robot.speed));
+
+    // Physics
+    robot.x+=Math.cos(robot.heading)*robot.speed*simSpeed*0.38;
+    robot.y+=Math.sin(robot.heading)*robot.speed*simSpeed*0.38;
+    robot.x+=windX*simSpeed*0.5;
+    robot.y+=windY*simSpeed*0.5;
+    robot.speed*=(1-friction*0.1);
+    robot.y+=gravity*simSpeed*0.5;
+
+    // Soft world bounds
+    const BOUND = 800;
+    if(Math.abs(robot.x) > BOUND) robot.heading = Math.atan2(-robot.y, -robot.x);
+    if(Math.abs(robot.y) > BOUND) robot.heading = Math.atan2(-robot.y, -robot.x);
+
+    // Distance
+    robot.distTraveled+=Math.hypot(robot.x-robot.prevX,robot.y-robot.prevY);
+
+    // Collision
+    const wasCollided=robot.collided;
+    robot.collided=showObstacles&&checkCollision(robot);
+    if(robot.collided&&!wasCollided){
+      collisionCount++;
+      logMsg(`${robot.name} — COLLISION`,'crit');
+      robot.x=robot.prevX; robot.y=robot.prevY;
+      robot.heading+=Math.PI*(0.2+Math.random()*0.3);
+      robot.speed*=0.3;
+    }
+
+    // Trail
+    if(showTrails){
+      robot.trail.push({x:robot.x,y:robot.y});
+      if(robot.trail.length>300) robot.trail.shift();
+    }
+
+    // History
+    robot.speedHistory.push(robot.speed);
+    robot.cteHistory.push(robot.cte);
+    robot.headHistory.push(robot.heading);
+    robot.steerHistory.push(robot.steer||0);
+    const HL=100;
+    if(robot.speedHistory.length>HL) robot.speedHistory.shift();
+    if(robot.cteHistory.length>HL)   robot.cteHistory.shift();
+    if(robot.headHistory.length>HL)  robot.headHistory.shift();
+    if(robot.steerHistory.length>HL) robot.steerHistory.shift();
+
+    // JSON recording
+    if(recording) recordedData.push({t:simTime,name:robot.name,x:robot.x,y:robot.y,speed:robot.speed,cte:robot.cte,heading:robot.heading,algo:robot.algo==='GLOBAL'?currentAlgo:robot.algo});
+  }
+}
+
+// ================================================================
+// DRAW
+// ================================================================
+function drawGrid(){
+  if(!showGrid) return;
+  ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--grid-color').trim();
+  ctx.lineWidth=0.5;
+  const step=50*zoom;
+  // Offset grid lines so they align with world origin (0,0) → canvas center + pan
+  const originX = canvas.width/2  + panX*zoom;
+  const originY = canvas.height/2 + panY*zoom;
+  const ox = ((originX % step) + step) % step;
+  const oy = ((originY % step) + step) % step;
+  for(let x=ox; x<canvas.width;  x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+  for(let y=oy; y<canvas.height; y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+  // World-origin crosshair
+  const o=w2s(0,0);
+  ctx.strokeStyle='rgba(0,212,255,0.12)'; ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(o.x,0);ctx.lineTo(o.x,canvas.height);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,o.y);ctx.lineTo(canvas.width,o.y);ctx.stroke();
+}
+
+function w2s(wx,wy){
+  return{
+    x: (wx + panX) * zoom + canvas.width  / 2,
+    y: (wy + panY) * zoom + canvas.height / 2,
+  };
+}
+function s2w(sx,sy){
+  return{
+    x:  (sx - canvas.width  / 2) / zoom - panX,
+    y:  (sy - canvas.height / 2) / zoom - panY,
+  };
+}
+
+function drawPath(){
+  if(path.length<2) return;
+  // Shadow
+  ctx.beginPath();
+  ctx.setLineDash([7,7]);
+  ctx.strokeStyle=`rgba(57,255,122,0.15)`;
+  ctx.lineWidth=3*zoom;
+  let p0=w2s(path[0].x,path[0].y);
+  ctx.moveTo(p0.x,p0.y);
+  for(const p of path){const s=w2s(p.x,p.y);ctx.lineTo(s.x,s.y);}
+  ctx.closePath(); ctx.stroke();
+  // Main line
+  ctx.beginPath();
+  ctx.setLineDash([5,5]);
+  ctx.strokeStyle='rgba(57,255,122,0.4)';
+  ctx.lineWidth=1.5*zoom;
+  ctx.moveTo(p0.x,p0.y);
+  for(const p of path){const s=w2s(p.x,p.y);ctx.lineTo(s.x,s.y);}
+  ctx.closePath(); ctx.stroke();
+  ctx.setLineDash([]);
+  // Waypoint dots
+  for(let i=0;i<path.length;i+=Math.max(1,Math.floor(path.length/30))){
+    const s=w2s(path[i].x,path[i].y);
+    ctx.beginPath();ctx.arc(s.x,s.y,2.5*zoom,0,Math.PI*2);
+    ctx.fillStyle='rgba(57,255,122,0.55)';ctx.fill();
+  }
+}
+
+function drawObstacles(){
+  if(!showObstacles) return;
+  for(const obs of obstacles){
+    const s=w2s(obs.x,obs.y);
+    ctx.save();
+    ctx.translate(s.x,s.y);
+    ctx.rotate((obs.rot||0)*Math.PI/180);
+    const wz=obs.w*zoom,hz=obs.h*zoom;
+    ctx.fillStyle=hexToRgba(obs.color||'#ff4455',0.18);
+    ctx.strokeStyle=obs.color||'#ff4455';
+    ctx.lineWidth=1.2;
+    if(obs.shape==='circle'){
+      ctx.beginPath();ctx.arc(0,0,wz/2,0,Math.PI*2);ctx.fill();ctx.stroke();
+      // Cross
+      ctx.strokeStyle=hexToRgba(obs.color||'#ff4455',0.4);ctx.lineWidth=0.7;
+      ctx.beginPath();ctx.moveTo(-wz/2,0);ctx.lineTo(wz/2,0);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,-wz/2);ctx.lineTo(0,wz/2);ctx.stroke();
+    } else if(obs.shape==='triangle'){
+      ctx.beginPath();ctx.moveTo(0,-hz/2);ctx.lineTo(wz/2,hz/2);ctx.lineTo(-wz/2,hz/2);ctx.closePath();
+      ctx.fill();ctx.stroke();
+    } else if(obs.shape==='lshape'){
+      ctx.beginPath();ctx.rect(-wz/2,-hz/2,wz*0.6,hz);ctx.fill();ctx.stroke();
+      ctx.beginPath();ctx.rect(-wz/2,-hz/2,wz,hz*0.4);ctx.fill();ctx.stroke();
+    } else {
+      ctx.beginPath();ctx.rect(-wz/2,-hz/2,wz,hz);ctx.fill();ctx.stroke();
+      // Hatch
+      ctx.strokeStyle=hexToRgba(obs.color||'#ff4455',0.25);ctx.lineWidth=0.5;
+      for(let i=-hz;i<wz+hz;i+=10){ctx.beginPath();ctx.moveTo(-wz/2+i,-hz/2);ctx.lineTo(-wz/2+i-hz,hz/2);ctx.stroke();}
+    }
+    ctx.restore();
+  }
+}
+
+function drawTrail(robot){
+  if(!showTrails||robot.trail.length<2) return;
+  ctx.beginPath();
+  let first=w2s(robot.trail[0].x,robot.trail[0].y);
+  ctx.moveTo(first.x,first.y);
+  for(let i=1;i<robot.trail.length;i++){
+    const s=w2s(robot.trail[i].x,robot.trail[i].y);
+    ctx.lineTo(s.x,s.y);
+  }
+  ctx.strokeStyle=hexToRgba(robot.color,0.2);
+  ctx.lineWidth=1.5*zoom;
+  ctx.stroke();
+}
+
+function drawLidar(robot){
+  if(!showLidar) return;
+  const readings=castLidar(robot);
+  const rs=w2s(robot.x,robot.y);
+  for(let i=0;i<LIDAR_ANGLES.length;i++){
+    const angle=robot.heading+LIDAR_ANGLES[i]*Math.PI/180;
+    const r=readings[i];
+    const es=w2s(robot.x+Math.cos(angle)*r,robot.y+Math.sin(angle)*r);
+    const pct=r/LIDAR_MAX;
+    ctx.beginPath();ctx.moveTo(rs.x,rs.y);ctx.lineTo(es.x,es.y);
+    ctx.strokeStyle=pct<0.35?'rgba(255,68,85,0.45)':pct<0.65?'rgba(245,166,35,0.35)':'rgba(0,212,255,0.18)';
+    ctx.lineWidth=0.8;ctx.stroke();
+    ctx.beginPath();ctx.arc(es.x,es.y,2.5,0,Math.PI*2);
+    ctx.fillStyle=pct<0.35?'rgba(255,68,85,0.9)':'rgba(0,212,255,0.6)';ctx.fill();
+  }
+}
+
+function drawRobot(robot,idx){
+  const shape=ROBOT_SHAPES[robot.type||'car'];
+  const s=w2s(robot.x,robot.y);
+  ctx.save();
+  ctx.translate(s.x,s.y);
+  ctx.rotate(robot.heading);
+
+  if(idx===selectedRobotIdx){ctx.shadowColor=robot.color;ctx.shadowBlur=20;}
+  const col=robot.collided?'#ff4455':robot.color;
+
+  if(robot.type==='drone'){
+    // Drone — X shape
+    ctx.strokeStyle=col;ctx.lineWidth=3*zoom;
+    ctx.beginPath();ctx.moveTo(-8*zoom,-8*zoom);ctx.lineTo(8*zoom,8*zoom);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(8*zoom,-8*zoom);ctx.lineTo(-8*zoom,8*zoom);ctx.stroke();
+    for(const [dx,dy] of[[-8,-8],[8,-8],[-8,8],[8,8]]){
+      ctx.beginPath();ctx.arc(dx*zoom,dy*zoom,4*zoom,0,Math.PI*2);
+      ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle=hexToRgba(col,0.4);ctx.fill();
+    }
+    ctx.beginPath();ctx.arc(0,0,4*zoom,0,Math.PI*2);
+    ctx.fillStyle=col;ctx.fill();
+  } else if(robot.type==='bike'){
+    ctx.fillStyle=hexToRgba(col,0.9);ctx.strokeStyle=col;ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.ellipse(0,0,shape.w/2*zoom,shape.h/2*zoom,0,0,Math.PI*2);
+    ctx.fill();ctx.stroke();
+  } else if(robot.type==='dot'){
+    ctx.beginPath();ctx.arc(0,0,6*zoom,0,Math.PI*2);
+    ctx.fillStyle=col;ctx.fill();
+  } else {
+    // Car / Truck
+    ctx.fillStyle=hexToRgba(col,0.85);ctx.strokeStyle=col;ctx.lineWidth=1.5;
+    const rr=4;const wz=shape.w/2*zoom,hz=shape.h/2*zoom;
+    ctx.beginPath();ctx.roundRect(-wz,-hz,shape.w*zoom,shape.h*zoom,rr);ctx.fill();ctx.stroke();
+    // Cab
+    ctx.fillStyle=hexToRgba(col,0.4);
+    ctx.beginPath();ctx.roundRect(wz*0.1,-hz*0.7,wz*0.9,hz*1.4,2);ctx.fill();
+    // Wheels
+    ctx.fillStyle=hexToRgba('#000',0.5);
+    const wy=hz*0.75,wx=wz*0.45,wr=hz*0.35;
+    for(const [wx2,wy2] of[[-wx,-wy],[-wx,wy],[wx,-wy],[wx,wy]]){
+      ctx.beginPath();ctx.ellipse(wx2,wy2,wr*1.2,wr,0,0,Math.PI*2);ctx.fill();
+    }
+  }
+  // Direction arrow
+  ctx.fillStyle=col;
+  ctx.beginPath();ctx.moveTo(shape.w/2*zoom+4,0);ctx.lineTo(shape.w/2*zoom-3,-4);ctx.lineTo(shape.w/2*zoom-3,4);ctx.closePath();ctx.fill();
+
+  // Lookahead circle (selected)
+  if(idx===selectedRobotIdx){
+    ctx.strokeStyle=hexToRgba(robot.color,0.12);ctx.lineWidth=1;
+    ctx.setLineDash([3,6]);
+    ctx.beginPath();ctx.arc(0,0,lookaheadDist*zoom,0,Math.PI*2);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
+
+  // Name label
+  ctx.font=`bold ${10*zoom}px 'Share Tech Mono',monospace`;
+  ctx.fillStyle=robot.color;
+  ctx.fillText(robot.name,s.x+shape.w/2*zoom+5,s.y-shape.h/2*zoom-3);
+}
+
+function drawFrame(){
+  const bgColor=getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim();
+  ctx.fillStyle=bgColor;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // Vignette (dark theme only)
+  if(document.documentElement.getAttribute('data-theme')==='dark'){
+    const vg=ctx.createRadialGradient(canvas.width/2,canvas.height/2,canvas.width*0.25,canvas.width/2,canvas.height/2,canvas.width*0.65);
+    vg.addColorStop(0,'transparent');vg.addColorStop(1,'rgba(0,0,0,0.35)');
+    ctx.fillStyle=vg;ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+
+  drawGrid();
+  drawPath();
+  drawObstacles();
+  drawStartEndMarkers();
+  for(let i=0;i<robots.length;i++){
+    drawTrail(robots[i]);
+    if(showLidar&&i===selectedRobotIdx) drawLidar(robots[i]);
+    drawRobot(robots[i],i);
+  }
+}
+
+// ================================================================
+// MINI CHARTS
+// ================================================================
+function drawMiniChart(id,data,color,maxV){
+  const c=document.getElementById(id);if(!c) return;
+  const cx=c.getContext('2d');
+  c.width=c.offsetWidth*devicePixelRatio;c.height=c.offsetHeight*devicePixelRatio;
+  cx.scale(devicePixelRatio,devicePixelRatio);
+  const w=c.offsetWidth,h=c.offsetHeight;
+  cx.clearRect(0,0,w,h);
+  if(data.length<2) return;
+  const mx=maxV||Math.max(...data,0.1);
+  const grad=cx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,hexToRgba(color,0.3));grad.addColorStop(1,hexToRgba(color,0));
+  cx.beginPath();cx.moveTo(0,h);
+  data.forEach((v,i)=>cx.lineTo((i/(data.length-1))*w,h-(v/mx)*(h-3)));
+  cx.lineTo(w,h);cx.closePath();cx.fillStyle=grad;cx.fill();
+  cx.beginPath();cx.strokeStyle=color;cx.lineWidth=1.5;
+  data.forEach((v,i)=>{const x=(i/(data.length-1))*w,y=h-(v/mx)*(h-3);i===0?cx.moveTo(x,y):cx.lineTo(x,y);});
+  cx.stroke();
+}
+
+function drawAllSpeedChart(){
+  const c=document.getElementById('allSpeedChart');if(!c) return;
+  const cx=c.getContext('2d');
+  c.width=c.offsetWidth*devicePixelRatio;c.height=c.offsetHeight*devicePixelRatio;
+  cx.scale(devicePixelRatio,devicePixelRatio);
+  const w=c.offsetWidth,h=c.offsetHeight;
+  cx.clearRect(0,0,w,h);
+  for(const robot of robots){
+    const d=robot.speedHistory;if(d.length<2) continue;
+    const mx=maxSpeed*1.2;
+    cx.beginPath();cx.strokeStyle=hexToRgba(robot.color,0.8);cx.lineWidth=1.5;
+    d.forEach((v,i)=>{const x=(i/(d.length-1))*w,y=h-(v/mx)*(h-3);i===0?cx.moveTo(x,y):cx.lineTo(x,y);});
+    cx.stroke();
+  }
+}
+
+function drawRadar(){
+  const c=document.getElementById('radarCanvas');
+  if(!c) return;
+
+  // Force size even if tab was hidden
+  const parentW = c.parentElement ? c.parentElement.clientWidth : 200;
+  const size = Math.max(parentW - 16, 120);
+  c.style.width  = size + 'px';
+  c.style.height = size + 'px';
+  c.width  = size * devicePixelRatio;
+  c.height = size * devicePixelRatio;
+
+  const cx = c.getContext('2d');
+  cx.scale(devicePixelRatio, devicePixelRatio);
+  const w=size, h=size;
+  cx.clearRect(0,0,w,h);
+
+  const robot = robots[selectedRobotIdx];
+  if(!robot) return;
+
+  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
+  const cx2=w/2, cy2=h/2, R=w/2-12;
+
+  // Background fill
+  cx.beginPath(); cx.arc(cx2,cy2,R,0,Math.PI*2);
+  cx.fillStyle = isDark ? 'rgba(0,10,20,0.9)' : 'rgba(220,235,250,0.9)';
+  cx.fill();
+  cx.strokeStyle = isDark ? 'rgba(0,212,255,0.3)' : 'rgba(0,106,170,0.3)';
+  cx.lineWidth=1; cx.stroke();
+
+  // Rings with distance labels
+  const ringColor = isDark ? 'rgba(0,212,255,0.15)' : 'rgba(0,106,170,0.15)';
+  const labelColor = isDark ? 'rgba(0,212,255,0.5)' : 'rgba(0,106,170,0.6)';
+  for(let i=1;i<=3;i++){
+    const r=R*i/3;
+    cx.beginPath(); cx.arc(cx2,cy2,r,0,Math.PI*2);
+    cx.strokeStyle=ringColor; cx.lineWidth=0.8; cx.stroke();
+    cx.font=`${8*Math.min(w/120,1)}px 'Share Tech Mono',monospace`;
+    cx.fillStyle=labelColor;
+    cx.fillText(`${Math.round(LIDAR_MAX*i/3)}m`, cx2+r+2, cy2-2);
+  }
+
+  // Cardinal spokes — NORTH-UP (0° = up = -π/2 in canvas)
+  const spokeColor = isDark ? 'rgba(0,212,255,0.12)' : 'rgba(0,106,170,0.12)';
+  const dirs=['N','NE','E','SE','S','SW','W','NW'];
+  for(let i=0;i<8;i++){
+    const a = i*Math.PI/4 - Math.PI/2;
+    cx.beginPath(); cx.moveTo(cx2,cy2);
+    cx.lineTo(cx2+Math.cos(a)*R, cy2+Math.sin(a)*R);
+    cx.strokeStyle=spokeColor; cx.lineWidth=0.7; cx.stroke();
+    // Direction labels
+    cx.font=`bold ${9*Math.min(w/120,1)}px 'Share Tech Mono',monospace`;
+    cx.fillStyle = isDark ? 'rgba(0,212,255,0.6)' : 'rgba(0,106,170,0.7)';
+    cx.textAlign='center'; cx.textBaseline='middle';
+    cx.fillText(dirs[i],
+      cx2+Math.cos(a)*(R+10),
+      cy2+Math.sin(a)*(R+10));
+  }
+  cx.textAlign='left'; cx.textBaseline='alphabetic';
+
+  // Cast full 360° LIDAR for radar display (36 beams, every 10°)
+  const RADAR_BEAMS = 36;
+  const radarReadings = [];
+  for(let i=0;i<RADAR_BEAMS;i++){
+    const angleDeg = i*(360/RADAR_BEAMS);
+    const angleRad = robot.heading + angleDeg*Math.PI/180;
+    let hit = LIDAR_MAX;
+    for(let r=8; r<LIDAR_MAX; r+=4){
+      const px=robot.x+Math.cos(angleRad)*r;
+      const py=robot.y+Math.sin(angleRad)*r;
+      let blocked=false;
+      for(const obs of obstacles) if(obsContains(obs,px,py)){hit=r;blocked=true;break;}
+      if(blocked) break;
+      if(px<-1000||px>1000||py<-800||py>800){hit=r;break;}
+    }
+    radarReadings.push(hit);
+  }
+
+  // Draw filled radar polygon — NORTH-UP: subtract robot.heading so forward = up
+  cx.beginPath();
+  for(let i=0;i<RADAR_BEAMS;i++){
+    // Robot-relative angle: beam angle minus heading, then rotated so 0=up
+    const beamAngleDeg = i*(360/RADAR_BEAMS);
+    const displayAngle = beamAngleDeg*Math.PI/180 - Math.PI/2;
+    const r = (radarReadings[i]/LIDAR_MAX)*R;
+    const px = cx2 + Math.cos(displayAngle)*r;
+    const py = cy2 + Math.sin(displayAngle)*r;
+    i===0 ? cx.moveTo(px,py) : cx.lineTo(px,py);
+  }
+  cx.closePath();
+  const rg = cx.createRadialGradient(cx2,cy2,0,cx2,cy2,R);
+  rg.addColorStop(0, isDark?'rgba(0,212,255,0.35)':'rgba(0,106,170,0.25)');
+  rg.addColorStop(1, isDark?'rgba(0,212,255,0.05)':'rgba(0,106,170,0.05)');
+  cx.fillStyle=rg; cx.fill();
+  cx.strokeStyle = isDark?'rgba(0,212,255,0.8)':'rgba(0,106,170,0.8)';
+  cx.lineWidth=1.5; cx.stroke();
+
+  // Obstacle dots on radar
+  for(const obs of obstacles){
+    const dx=obs.x-robot.x, dy=obs.y-robot.y;
+    const d=Math.hypot(dx,dy);
+    if(d>LIDAR_MAX*1.2) continue;
+    const relAngle=Math.atan2(dy,dx)-robot.heading - Math.PI/2;
+    const rr=(d/LIDAR_MAX)*R;
+    const px=cx2+Math.cos(relAngle)*rr;
+    const py=cy2+Math.sin(relAngle)*rr;
+    cx.beginPath(); cx.arc(px,py,4,0,Math.PI*2);
+    cx.fillStyle='rgba(255,68,85,0.8)'; cx.fill();
+  }
+
+  // Other robots on radar
+  for(let i=0;i<robots.length;i++){
+    if(i===selectedRobotIdx) continue;
+    const other=robots[i];
+    const dx=other.x-robot.x, dy=other.y-robot.y;
+    const d=Math.hypot(dx,dy);
+    if(d>LIDAR_MAX) continue;
+    const relAngle=Math.atan2(dy,dx)-robot.heading - Math.PI/2;
+    const rr=(d/LIDAR_MAX)*R;
+    const px=cx2+Math.cos(relAngle)*rr;
+    const py=cy2+Math.sin(relAngle)*rr;
+    cx.beginPath(); cx.arc(px,py,5,0,Math.PI*2);
+    cx.fillStyle=other.color; cx.fill();
+  }
+
+  // Center robot dot
+  cx.beginPath(); cx.arc(cx2,cy2,5,0,Math.PI*2);
+  cx.fillStyle=robot.color; cx.fill();
+  cx.strokeStyle='#fff'; cx.lineWidth=1.5; cx.stroke();
+
+  // Heading arrow (always points UP since display is robot-relative)
+  cx.beginPath(); cx.moveTo(cx2,cy2);
+  cx.lineTo(cx2, cy2-R*0.35);
+  cx.strokeStyle=robot.color; cx.lineWidth=2.5; cx.stroke();
+  // Arrowhead
+  cx.beginPath();
+  cx.moveTo(cx2, cy2-R*0.35);
+  cx.lineTo(cx2-4, cy2-R*0.25);
+  cx.lineTo(cx2+4, cy2-R*0.25);
+  cx.closePath();
+  cx.fillStyle=robot.color; cx.fill();
+
+  // Speed arc on outer ring
+  const speedFrac = Math.min(robot.speed/maxSpeed, 1);
+  cx.beginPath();
+  cx.arc(cx2,cy2,R-3, -Math.PI/2, -Math.PI/2+speedFrac*Math.PI*2);
+  cx.strokeStyle=isDark?'rgba(245,166,35,0.8)':'rgba(192,120,0,0.8)';
+  cx.lineWidth=3; cx.stroke();
+}
+
+// ================================================================
+// UI UPDATES
+// ================================================================
+function updateTelemetry(){
+  const robot=robots[selectedRobotIdx];if(!robot) return;
+  document.getElementById('tSpeed').innerHTML=`${robot.speed.toFixed(2)}<span class="telem-unit">m/s</span>`;
+  document.getElementById('tHeading').innerHTML=`${((robot.heading*180/Math.PI)%360).toFixed(1)}<span class="telem-unit">°</span>`;
+  document.getElementById('tCTE').innerHTML=`${robot.cte.toFixed(3)}<span class="telem-unit">m</span>`;
+  document.getElementById('tCollisions').textContent=collisionCount;
+  document.getElementById('tPosX').innerHTML=`${robot.x.toFixed(1)}<span class="telem-unit">px</span>`;
+  document.getElementById('tPosY').innerHTML=`${robot.y.toFixed(1)}<span class="telem-unit">px</span>`;
+  document.getElementById('tDist').innerHTML=`${(robot.distTraveled/10).toFixed(1)}<span class="telem-unit">m</span>`;
+  document.getElementById('tWpt').textContent=robot.pathIdx;
+  drawMiniChart('speedChart',robot.speedHistory,'#00d4ff',maxSpeed*1.2);
+  drawMiniChart('cteChart',robot.cteHistory,'#f5a623',20);
+  drawMiniChart('headChart',robot.headHistory,'#b67fff',Math.PI*2);
+  drawMiniChart('steerChart',robot.steerHistory,'#39ff7a',0.3);
+  drawAllSpeedChart();
+  drawRadar();
+  updateLidarBars(robot);
+}
+
+function updateLidarBars(robot){
+  const container=document.getElementById('lidarBars');
+  container.innerHTML='';
+  const readings=castLidar(robot);
+  readings.forEach((r,i)=>{
+    const pct=r/LIDAR_MAX;
+    const cls=pct<0.3?'fill-crit':pct<0.6?'fill-warn':'fill-ok';
+    container.innerHTML+=`<div class="sensor-row">
+      <div class="sensor-label-row"><span class="sensor-label">${LIDAR_DIRS[i]}</span><span class="sensor-val">${r.toFixed(0)}m</span></div>
+      <div class="sensor-bar-bg"><div class="sensor-fill ${cls}" style="width:${pct*100}%"></div></div>
+    </div>`;
+  });
+}
+
+function updateRobotList(){
+  const container=document.getElementById('robotList');
+  container.innerHTML='';
+  const ALGO_OPTIONS=['GLOBAL','PURE_PURSUIT','STANLEY','LQR','MPC','PID','DWA','POTENTIAL','CUSTOM'];
+  robots.forEach((r,i)=>{
+    const status=r.reachedEnd?'ARRIVED':r.collided?'COLLISION':r.active?'ACTIVE':'STOPPED';
+    const bc=r.reachedEnd?'badge-idle':r.collided?'badge-stopped':r.active?'badge-active':'badge-idle';
+    const algoOpts=ALGO_OPTIONS.map(a=>`<option value="${a}" ${r.algo===a?'selected':''}>${a==='GLOBAL'?'▶ GLOBAL':a}</option>`).join('');
+    container.innerHTML+=`
+    <div class="robot-item ${i===selectedRobotIdx?'active-robot':''}" onclick="selectRobot(${i})" style="flex-direction:column;align-items:stretch;gap:5px;padding:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="robot-name" style="color:${r.color}">${r.name} <span style="font-size:9px;color:var(--text-dim)">[${(r.type||'car').toUpperCase()}]</span></div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <div class="robot-badge ${bc}">${status}</div>
+          <button class="robot-mini-btn" onclick="event.stopPropagation();removeRobot(${i})" style="color:var(--red)">✕</button>
+        </div>
+      </div>
+      <div class="robot-state">${r.x.toFixed(0)},${r.y.toFixed(0)} | ${r.speed.toFixed(1)}m/s | CTE:${r.cte.toFixed(1)}</div>
+      <!-- Per-robot algo -->
+      <div style="display:flex;gap:4px;align-items:center">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-dim);flex-shrink:0">ALGO:</span>
+        <select style="flex:1;font-size:10px;padding:3px 4px" onchange="event.stopPropagation();setRobotAlgo(${i},this.value)">${algoOpts}</select>
+      </div>
+      <!-- Custom code for this robot (shown only if CUSTOM) -->
+      <div id="robotCustomCode_${i}" style="display:${r.algo==='CUSTOM'?'block':'none'}">
+        <textarea class="code-editor" id="robotCodeEditor_${i}" style="min-height:90px;font-size:9px" onclick="event.stopPropagation()">${r._customCode||defaultCustomCode()}</textarea>
+        <button class="btn cyan-btn" style="width:100%;margin-top:3px;font-size:10px" onclick="event.stopPropagation();compileRobotAlgo(${i})">▶ COMPILE</button>
+        <div id="robotAlgoError_${i}" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--red);margin-top:2px;display:none"></div>
+      </div>
+      <!-- Start / End points -->
+      <div style="display:flex;gap:4px">
+        <button class="robot-mini-btn" style="flex:1;padding:3px;${r.startPt?'color:var(--green);border-color:var(--green)':''}" onclick="event.stopPropagation();setRobotStartEnd(${i},'start')">📍 START</button>
+        <button class="robot-mini-btn" style="flex:1;padding:3px;${r.endPt?'color:var(--amber);border-color:var(--amber)':''}" onclick="event.stopPropagation();setRobotStartEnd(${i},'end')">🏁 END</button>
+        <button class="robot-mini-btn" style="padding:3px" onclick="event.stopPropagation();clearRobotPath(${i})" title="Clear S/E path">✕</button>
+      </div>
+    </div>`;
+  });
+  document.getElementById('agentCountLabel').textContent=`${robots.length} AGENT${robots.length!==1?'S':''}`;
+}
+
+function defaultCustomCode(){
+  return `// robot: {x,y,heading,speed,cte,pathIdx}
+// P: array of {x,y} waypoints
+function customControl(robot, P) {
+  if(!P||P.length<2) return;
+  let minD=Infinity;
+  for(let i=0;i<P.length;i++){
+    const d=Math.hypot(robot.x-P[i].x,robot.y-P[i].y);
+    if(d<minD){minD=d;robot.pathIdx=i;}
+  }
+  let target=P[robot.pathIdx];
+  for(let i=0;i<P.length;i++){
+    const idx=(robot.pathIdx+i)%P.length;
+    if(Math.hypot(robot.x-P[idx].x,robot.y-P[idx].y)>=50){target=P[idx];break;}
+  }
+  const ta=Math.atan2(target.y-robot.y,target.x-robot.x);
+  let da=ta-robot.heading;
+  while(da>Math.PI) da-=Math.PI*2;
+  while(da<-Math.PI) da+=Math.PI*2;
+  robot.heading+=da*0.12;
+  robot.cte=Math.abs(da)*10;
+}`;
+}
+
+function setRobotAlgo(robotIdx, algo){
+  robots[robotIdx].algo = algo;
+  document.getElementById(`robotCustomCode_${robotIdx}`).style.display = algo==='CUSTOM'?'block':'none';
+  logMsg(`${robots[robotIdx].name} algo → ${algo}`,'info');
+}
+
+function compileRobotAlgo(robotIdx){
+  const robot = robots[robotIdx];
+  const code  = document.getElementById(`robotCodeEditor_${robotIdx}`).value;
+  robot._customCode = code;
+  const errEl = document.getElementById(`robotAlgoError_${robotIdx}`);
+  try{
+    const fn = new Function('path','dist2','noise','lookaheadDist','maxSpeed','angleDiff','obstacleSteeringCorrection',
+      `${code}\nreturn customControl;`);
+    robot.customAlgoFn = fn(path,dist2,noise,lookaheadDist,maxSpeed,angleDiff,obstacleSteeringCorrection);
+    errEl.style.display='none';
+    logMsg(`${robot.name} custom algo compiled OK`,'good');
+    toast(`${robot.name}: compiled!`);
+  }catch(e){
+    errEl.style.display='block'; errEl.textContent='ERR: '+e.message;
+    logMsg(`${robot.name} compile error: `+e.message,'crit');
+  }
+}
+
+function updateObsList(){
+  const container=document.getElementById('obsList');
+  if(!container) return;
+  container.innerHTML='';
+  obstacles.forEach((o,i)=>{
+    container.innerHTML+=`<div class="obs-item">
+      <div style="width:10px;height:10px;background:${o.color};border-radius:2px;flex-shrink:0"></div>
+      <span>${o.shape.toUpperCase()} ${o.w.toFixed(0)}×${o.h.toFixed(0)}</span>
+      <button class="obs-mini-btn" onclick="removeObstacle(${i})">✕</button>
+    </div>`;
+  });
+}
+
+// ================================================================
+// CONTROLS
+// ================================================================
+function togglePlay(){
+  running=!running;
+  document.getElementById('btnPlay').textContent=running?'⏸ PAUSE':'▶ PLAY';
+  document.getElementById('btnPlay').classList.toggle('active',running);
+  document.getElementById('playToolbarBtn').textContent=running?'⏸ PAUSE':'▶ RUN';
+  document.getElementById('simStatusDot').className='dot '+(running?'green-dot':'amber-dot');
+  document.getElementById('simStatusText').textContent=running?'RUNNING':'PAUSED';
+  logMsg(running?'Simulation resumed':'Simulation paused',running?'good':'warn');
+}
+function resetSim(){
+  simTime=0; collisionCount=0;
+  robots.forEach((r,i)=>{
+    const pt=path[i*10%Math.max(path.length,1)]||{x:0,y:0};
+    r.x=pt.x; r.y=pt.y; r.heading=0; r.speed=0;
+    r.trail=[]; r.speedHistory=[]; r.cteHistory=[]; r.headHistory=[]; r.steerHistory=[];
+    r.collided=false; r.distTraveled=0; r._pidState=null;
+  });
+  logMsg('Simulation reset','info');
+}
+function stepOnce(){if(!running){stepRobots();logMsg('Step +1','info');}}
+function addRobot(){
+  if(robots.length>=8){toast('Max 8 agents');return;}
+  const idx=robots.length;
+  const type=document.getElementById('robotTypeSelect').value;
+  const pt=path[idx*12%Math.max(path.length,1)]||{x:0,y:0};
+  robots.push(createRobot(pt.x,pt.y,newRobotColor,ROBOT_NAMES[idx],idx*12,type));
+  logMsg(`${ROBOT_NAMES[idx]} spawned [${type.toUpperCase()}]`,'good');
+}
+function removeRobot(i){
+  if(robots.length<=1){toast('At least 1 agent required');return;}
+  const name=robots[i].name;
+  robots.splice(i,1);
+  if(selectedRobotIdx>=robots.length) selectedRobotIdx=robots.length-1;
+  logMsg(`${name} removed`,'warn');
+}
+function removeSelectedRobot(){removeRobot(selectedRobotIdx);}
+function selectRobot(i){selectedRobotIdx=i;}
+function selectRobotColor(color,el){
+  newRobotColor=color;
+  document.querySelectorAll('#robotColorPicker .color-swatch').forEach(s=>s.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function setAlgo(algo,el){
+  currentAlgo=algo;
+  document.querySelectorAll('.algo-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('modeTag').textContent='ALGO: '+algo.replace('_',' ');
+  document.getElementById('customAlgoPanel').style.display=algo==='CUSTOM'?'block':'none';
+  logMsg('Algorithm: '+algo.replace('_',' '),'info');
+  robots.forEach(r=>r._pidState=null);
+}
+
+function setPath(type,el){
+  currentPathType=type;
+  document.querySelectorAll('.left-panel .algo-grid .algo-btn').forEach(b=>b.classList.remove('selected'));
+  if(el) el.classList.add('selected');
+  document.getElementById('customPathHint').style.display=type==='custom'?'block':'none';
+  if(type==='custom'){customPathMode=true;path=[];logMsg('Custom path mode — click canvas','warn');return;}
+  customPathMode=false;regeneratePath();
+  logMsg('Path: '+type.toUpperCase(),'good');
+}
+
+function reversePath(){path.reverse();logMsg('Path reversed','info');}
+function clearPath(){path=[];robots.forEach(r=>r.trail=[]);customPathMode=true;logMsg('Path cleared','warn');document.getElementById('customPathHint').style.display='block';}
+
+function toggleGrid(){showGrid=!showGrid;toast('Grid '+(showGrid?'ON':'OFF'));}
+function toggleTrails(){showTrails=!showTrails;if(!showTrails)robots.forEach(r=>r.trail=[]);toast('Trails '+(showTrails?'ON':'OFF'));}
+function toggleLidar(){showLidar=!showLidar;toast('LIDAR '+(showLidar?'ON':'OFF'));}
+function toggleObstacles(){showObstacles=!showObstacles;toast('Obstacles '+(showObstacles?'ON':'OFF'));}
+
+function startPlaceObstacle(){
+  placingObstacle=true;
+  document.getElementById('interactTag').style.display='block';
+  toast('Click canvas to place obstacle');
+}
+function placeObstacle(wx,wy){
+  const shape=document.getElementById('obsShape').value;
+  const w=parseInt(document.getElementById('obsW').value)||40;
+  const h=parseInt(document.getElementById('obsH').value)||40;
+  const rot=parseInt(document.getElementById('obsRot').value)||0;
+  const color=document.getElementById('obsColor').value;
+  obstacles.push({x:wx,y:wy,w,h,shape,rot,color});
+  updateObsList();
+  logMsg(`Obstacle placed at (${wx.toFixed(0)},${wy.toFixed(0)})`,'info');
+}
+function removeObstacle(i){obstacles.splice(i,1);updateObsList();logMsg('Obstacle removed','warn');}
+function clearObstacles(){obstacles=[];updateObsList();logMsg('All obstacles cleared','warn');}
+function addRandomObstacles(){
+  for(let i=0;i<4;i++){
+    const shapes=['rect','circle','triangle'];
+    obstacles.push({
+      x:(Math.random()-0.5)*500,
+      y:(Math.random()-0.5)*300,
+      w:20+Math.random()*50, h:20+Math.random()*50,
+      shape:shapes[Math.floor(Math.random()*shapes.length)],
+      rot:Math.random()*360,
+      color:`hsl(${Math.random()*30+350},80%,60%)`,
+    });
+  }
+  updateObsList(); logMsg('Random obstacles added','info');
+}
+
+function compileCustomAlgo(){
+  const code=document.getElementById('customAlgoCode').value;
+  try{
+    const fn=new Function('path','dist2','noise','lookaheadDist','maxSpeed','angleDiff','obstacleSteeringCorrection',
+      `${code}\nreturn customControl;`);
+    customAlgoFn=fn(path,dist2,noise,lookaheadDist,maxSpeed,angleDiff,obstacleSteeringCorrection);
+    document.getElementById('algoError').style.display='none';
+    logMsg('Global custom algorithm compiled OK','good');
+    toast('Custom algo compiled!');
+  }catch(e){
+    document.getElementById('algoError').style.display='block';
+    document.getElementById('algoError').textContent='ERROR: '+e.message;
+    logMsg('Compile error: '+e.message,'crit');
+  }
+}
+
+function setMapSize(size){
+  const sizes={small:[800,500],medium:[1200,700],large:[1600,1000]};
+  // Just regenerate
+  regeneratePath();
+  toast('Map size: '+size.toUpperCase());
+}
+
+// ================================================================
+// THEME
+// ================================================================
+function toggleTheme(){
+  const html=document.documentElement;
+  const isDark=html.getAttribute('data-theme')==='dark';
+  html.setAttribute('data-theme',isDark?'light':'dark');
+}
+
+// ================================================================
+// MODALS
+// ================================================================
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(m=>{
+  m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});
+});
+
+// ================================================================
+// EXPORT / IMPORT
+// ================================================================
+function exportJSON(){
+  const data={
+    meta:{simTime,algorithm:currentAlgo,timestamp:new Date().toISOString(),fps:frameCount},
+    config:{lookaheadDist,maxSpeed,steerGain,sensorNoise,friction,gravity,windX,windY},
+    robots:robots.map(r=>({name:r.name,type:r.type,color:r.color,position:{x:r.x,y:r.y},heading:r.heading,speed:r.speed,cte:r.cte,distTraveled:r.distTraveled,speedHistory:r.speedHistory,cteHistory:r.cteHistory})),
+    obstacles:obstacles,
+    path:path,
+    collisions:collisionCount,
+  };
+  dlBlob(JSON.stringify(data,null,2),'application/json',`av-sim-${currentAlgo}-${Date.now()}.json`);
+  logMsg('Exported JSON','good');
+  closeModal('exportModal');
+}
+function exportCSV(){
+  const robot=robots[selectedRobotIdx];
+  let csv='t,speed,cte,heading\n';
+  robot.speedHistory.forEach((s,i)=>{csv+=`${i},${s.toFixed(4)},${(robot.cteHistory[i]||0).toFixed(4)},${(robot.headHistory[i]||0).toFixed(4)}\n`;});
+  dlBlob(csv,'text/csv',`av-sim-${robot.name}-${Date.now()}.csv`);
+  logMsg('Exported CSV','good');
+  closeModal('exportModal');
+}
+function exportPath(){
+  dlBlob(JSON.stringify(path,null,2),'application/json',`av-sim-path-${Date.now()}.json`);
+  logMsg('Path exported','good');
+  closeModal('exportModal');
+}
+function importPathFromJSON(){document.getElementById('importFileInput').click();}
+function handleImport(e){
+  const file=e.target.files[0];if(!file) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(Array.isArray(data)){path=data;logMsg('Path imported: '+data.length+' waypoints','good');}
+      else if(data.path){path=data.path;logMsg('Full session imported','good');}
+      toast('Import successful!');
+    }catch(err){logMsg('Import error: '+err.message,'crit');}
+  };
+  r.readAsText(file);
+}
+function dlBlob(content,type,filename){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type}));
+  a.download=filename;a.click();
+}
+
+function runBenchmark(){
+  const results=[];
+  const algos=['PURE_PURSUIT','STANLEY','LQR','MPC','PID'];
+  const savedAlgo=currentAlgo;
+  for(const algo of algos){
+    currentAlgo=algo;
+    let totalCTE=0,cols=0;
+    const savedPos=robots.map(r=>({x:r.x,y:r.y,h:r.heading}));
+    for(let i=0;i<300;i++){stepRobots();robots.forEach(r=>{totalCTE+=r.cte;if(r.collided)cols++;});}
+    results.push({algo,meanCTE:(totalCTE/300/robots.length).toFixed(3),collisions:cols});
+    robots.forEach((r,i)=>{r.x=savedPos[i].x;r.y=savedPos[i].y;r.heading=savedPos[i].h;r.speed=0;});
+  }
+  currentAlgo=savedAlgo;
+  const sorted=results.sort((a,b)=>+a.meanCTE-+b.meanCTE);
+  document.getElementById('benchResults').innerHTML=
+    `<table style="width:100%;border-collapse:collapse">
+     <tr><th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--border);color:var(--amber)">ALGO</th>
+     <th style="padding:4px 6px;border-bottom:1px solid var(--border);color:var(--amber)">MEAN CTE</th>
+     <th style="padding:4px 6px;border-bottom:1px solid var(--border);color:var(--amber)">COLLISIONS</th></tr>`+
+    sorted.map((r,i)=>`<tr style="background:${i===0?'rgba(57,255,122,0.06)':'transparent'}">
+      <td style="padding:4px 6px;font-family:'Share Tech Mono',monospace;font-size:11px;color:${i===0?'var(--green)':'var(--text-primary)'}">${r.algo}${i===0?' ★':''}</td>
+      <td style="padding:4px 6px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyan)">${r.meanCTE}</td>
+      <td style="padding:4px 6px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:11px;color:${r.collisions>0?'var(--red)':'var(--green)'}">${r.collisions}</td>
+    </tr>`).join('')+`</table>`;
+  logMsg('Benchmark complete — winner: '+sorted[0].algo,'good');
+}
+
+// ================================================================
+// RECORDING
+// ================================================================
+function toggleRecording(){
+  recording=!recording;
+  document.getElementById('recDot').classList.toggle('active',recording);
+  document.getElementById('recBtn').textContent=recording?'⏹ STOP REC':'⏺ RECORD';
+  if(!recording&&recordedData.length>0){
+    dlBlob(JSON.stringify(recordedData,null,2),'application/json',`av-sim-recording-${Date.now()}.json`);
+    logMsg(`Recording saved: ${recordedData.length} frames`,'good');
+    recordedData=[];
+  } else {
+    recordedData=[];
+    logMsg(recording?'Recording started':'Recording stopped',recording?'warn':'info');
+  }
+}
+
+// ================================================================
+// LOG
+// ================================================================
+function logMsg(msg,type='info'){
+  const box=document.getElementById('logBox');
+  const ts=`T+${simTime.toFixed(1)}`;
+  const line=document.createElement('div');
+  line.className='log-line';
+  const colorClass={info:'log-info',warn:'log-warn',crit:'log-crit',good:'log-good'}[type]||'';
+  line.innerHTML=`<span class="log-ts">${ts}</span><span class="${colorClass}">${msg}</span>`;
+  box.insertBefore(line,box.firstChild);
+  while(box.children.length>40) box.removeChild(box.lastChild);
+}
+
+// ================================================================
+// TOAST
+// ================================================================
+function toast(msg,dur=1800){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// ================================================================
+// SECTION COLLAPSE
+// ================================================================
+function toggleSection(btn){
+  const section=btn.closest('.panel-section');
+  const content=section.querySelector('.collapsible');
+  if(!content) return;
+  content.classList.toggle('collapsed');
+  btn.textContent=content.classList.contains('collapsed')?'▸':'▾';
+  if(!content.style.maxHeight||content.style.maxHeight==='0px'){
+    content.style.maxHeight=content.scrollHeight+'px';
+  } else {
+    content.style.maxHeight=content.scrollHeight+'px';
+    requestAnimationFrame(()=>{content.style.maxHeight=content.classList.contains('collapsed')?'0px':content.scrollHeight+'px';});
+  }
+}
+// Init collapsible max-heights
+document.querySelectorAll('.collapsible').forEach(c=>{c.style.maxHeight=c.scrollHeight+'px';});
+
+// ================================================================
+// TABS
+// ================================================================
+function switchTab(group,id,btn){
+  document.querySelectorAll(`#${btn.closest('.panel-section').id||'right-panel'} .tab`).forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>{if(t.id.startsWith('tab-'))t.classList.remove('active');});
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+// Fix tab switching without group IDs
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click',function(){
+    const bar=this.closest('.tab-bar');
+    bar.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    this.classList.add('active');
+    const section=this.closest('.panel-section');
+    section.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    const match=this.getAttribute('onclick').match(/'([^']+)'/g);
+    if(match&&match[1]){
+      const tabId=match[1].replace(/'/g,'');
+      document.getElementById(tabId)?.classList.add('active');
+      // Force radar redraw when switching to radar tab
+      if(tabId==='tab-radar') setTimeout(drawRadar,30);
+    }
+  });
+});
+
+// ================================================================
+// CANVAS INTERACTIONS
+// ================================================================
+canvas.addEventListener('click',e=>{
+  const rect=canvas.getBoundingClientRect();
+  const sx=(e.clientX-rect.left)*(canvas.width/rect.width);
+  const sy=(e.clientY-rect.top)*(canvas.height/rect.height);
+  const wp=s2w(sx,sy);
+  // Priority 1: placing obstacle
+  if(placingObstacle){
+    placeObstacle(wp.x,wp.y);
+    placingObstacle=false;
+    document.getElementById('interactTag').style.display='none';
+    return;
+  }
+  // Priority 2: placing start/end point
+  if(setStartEndMode){
+    placeStartEnd(wp.x, wp.y);
+    return;
+  }
+  // Priority 3: custom path waypoint
+  if(customPathMode){
+    path.push({x:wp.x,y:wp.y});
+    logMsg(`Waypoint ${path.length} @ (${wp.x.toFixed(0)},${wp.y.toFixed(0)})`,'info');
+  }
+});
+canvas.addEventListener('contextmenu',e=>{
+  e.preventDefault();
+  if(customPathMode){customPathMode=false;document.getElementById('customPathHint').style.display='none';logMsg('Custom path complete: '+path.length+' pts','good');}
+});
+canvas.addEventListener('mousemove',e=>{
+  const rect=canvas.getBoundingClientRect();
+  const sx=(e.clientX-rect.left)*(canvas.width/rect.width);
+  const sy=(e.clientY-rect.top)*(canvas.height/rect.height);
+  const wp=s2w(sx,sy);
+  document.getElementById('coordsDisplay').textContent=`X:${wp.x.toFixed(0)} Y:${wp.y.toFixed(0)}`;
+  if(isDragging){panX+=(e.movementX/zoom);panY+=(e.movementY/zoom);}
+});
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const factor=e.deltaY<0?1.1:0.9;
+  zoom=Math.max(0.3,Math.min(4,zoom*factor));
+  document.getElementById('zoomVal').textContent=zoom.toFixed(1)+'x';
+  document.getElementById('zoomTag').textContent='ZOOM: '+zoom.toFixed(1)+'x';
+},{passive:false});
+canvas.addEventListener('mousedown',e=>{if(e.button===1){isDragging=true;e.preventDefault();}});
+canvas.addEventListener('mouseup',e=>{if(e.button===1)isDragging=false;});
+canvas.addEventListener('mouseleave',()=>{isDragging=false;});
+
+// ================================================================
+// KEYBOARD
+// ================================================================
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  switch(e.key){
+    case ' ':e.preventDefault();togglePlay();break;
+    case 'r':case 'R':resetSim();break;
+    case 'ArrowRight':case '.':stepOnce();break;
+    case 'g':case 'G':toggleGrid();break;
+    case 't':case 'T':toggleTrails();break;
+    case 'l':case 'L':toggleLidar();break;
+    case '+':case '=':zoom=Math.min(4,zoom*1.1);break;
+    case '-':zoom=Math.max(0.3,zoom*0.9);break;
+    case 'Escape':
+      placingObstacle=false; customPathMode=false; setStartEndMode=null;
+      document.getElementById('interactTag').style.display='none';
+      canvas.style.cursor='crosshair';
+      break;
+  }
+});
+
+// ================================================================
+// RESIZE
+// ================================================================
+function resizeCanvas(){
+  const wrap=canvas.parentElement;
+  canvas.width=wrap.clientWidth;
+  canvas.height=wrap.clientHeight;
+  panX=0; panY=0;
+  regeneratePath();
+  initObstacles();
+  initRobots();
+  logMsg('Simulator initialized — v2.1','good');
+  logMsg('Path centered at world origin | 3 agents ready','info');
+}
+window.addEventListener('resize',()=>{
+  canvas.width=canvas.parentElement.clientWidth;
+  canvas.height=canvas.parentElement.clientHeight;
+  // world coords unchanged, canvas just resizes around them
+});
+// ================================================================
+function dist2(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+function noise(){return (Math.random()-0.5)*2;}
+function hexToRgba(hex,alpha){
+  if(!hex||hex[0]!=='#') return `rgba(255,68,85,${alpha})`;
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function angleDiff(a,b){let d=a-b;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return d;}
+
+// ================================================================
+// MAIN LOOP
+// ================================================================
+let lastTime=performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min((now-lastTime)/1000,0.05);
+  lastTime=now;
+  if(running){simTime+=dt*simSpeed;stepRobots();}
+  drawFrame();
+  updateTelemetry();
+  updateRobotList();
+  // Clock
+  const min=Math.floor(simTime/60).toString().padStart(2,'0');
+  const sec=Math.floor(simTime%60).toString().padStart(2,'0');
+  const dec=Math.floor((simTime%1)*10);
+  document.getElementById('simClock').textContent=`T+${min}:${sec}.${dec}`;
+  // FPS
+  frameCount++;
+  if(now-lastFpsTime>1000){document.getElementById('fps').textContent=frameCount;frameCount=0;lastFpsTime=now;}
+}
+
+resizeCanvas();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
